@@ -202,15 +202,39 @@ class CardDesignService
         }
     }
 
-    /** Merge-field values for the design: the attached customer, otherwise sample data. */
+    /**
+     * Merge-field values for the design: the attached customer, otherwise
+     * sample data. A brand kit fills in company details and the logo where
+     * the customer has none, and replaces the sample company details.
+     */
     public function mergeData(CardDesign $design): array
     {
+        $brand = $design->brand_kit_id ? ($design->brandKit?->mergeFallbacks() ?? []) : [];
         $customer = $design->customer;
         if (! $customer) {
-            return Scene::sampleData();
+            return array_merge(Scene::sampleData(), $brand);
         }
 
-        return $this->customerData($customer);
+        $data = $this->customerData($customer);
+        foreach ($brand as $key => $value) {
+            if (blank($data[$key] ?? null) && CustomerFields::visible($customer->visibility, 'card', $this->visibilityField($key))) {
+                $data[$key] = $value;
+            }
+        }
+
+        return $data;
+    }
+
+    /** The customer visibility switch that governs a merge key (so hidden fields stay hidden). */
+    private function visibilityField(string $key): string
+    {
+        foreach (CustomerFields::MERGE_MAP as $field => $keys) {
+            if (in_array($key, $keys, true)) {
+                return $field;
+            }
+        }
+
+        return $key;
     }
 
     public function customerData(Customer $customer): array
@@ -285,7 +309,7 @@ class CardDesignService
     /** Cached front/back SVG thumbnails for listings. */
     public function preview(CardDesign $design): array
     {
-        return Cache::remember("design-preview:{$design->ulid}:{$design->version}:".$design->updated_at?->timestamp.':'.$design->customer?->updated_at?->timestamp, now()->addDay(), function () use ($design) {
+        return Cache::remember("design-preview:{$design->ulid}:{$design->version}:".$design->updated_at?->timestamp.':'.$design->customer?->updated_at?->timestamp.':'.($design->brand_kit_id ? $design->brandKit?->updated_at?->timestamp : ''), now()->addDay(), function () use ($design) {
             $options = $this->renderOptions($design);
 
             return [

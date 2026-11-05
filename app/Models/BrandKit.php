@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class BrandKit extends Model
 {
@@ -41,5 +42,20 @@ class BrandKit extends Model
     public function cardDesigns(): HasMany
     {
         return $this->hasMany(CardDesign::class);
+    }
+
+    /** Merge-field values from the kit, used where the customer has none (and over sample data). */
+    public function mergeFallbacks(): array
+    {
+        $c = $this->company_details ?? [];
+
+        return array_filter([
+            'company' => $c['name'] ?? null,
+            'tagline' => $c['tagline'] ?? null,
+            'website' => isset($c['website']) ? preg_replace('#^https?://#', '', $c['website']) : null,
+            'office_phone' => $c['phone'] ?? null,
+            'address' => $c['address'] ?? null,
+            'logo' => $this->logo_path ? Storage::disk('public')->url($this->logo_path) : null,
+        ], fn ($v) => filled($v));
     }
 }

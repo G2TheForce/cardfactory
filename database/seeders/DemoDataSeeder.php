@@ -14,6 +14,7 @@ use App\Models\NfcAssignment;
 use App\Models\NfcCard;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\BrandKitService;
 use App\Services\CardDesignService;
 use App\Services\DigitalProfileService;
 use App\Support\ProfileThemes;
@@ -197,6 +198,25 @@ class DemoDataSeeder extends Seeder
                 'provider_reference' => 'demo-'.$company->ulid,
                 'starts_at' => $this->randomDate(300),
             ]);
+        }
+
+        // Brand kits, each with a template design.
+        $kits = app(BrandKitService::class);
+        foreach ([
+            ['Northwind Legal', '#1E3A5F', '#334155', '#C9A227', 'Cormorant Garamond', 'Lato', 'Trusted counsel since 1998', 'corporate-executive'],
+            ['Brightside Studio', '#7C3AED', '#1F2937', '#F472B6', 'Outfit', 'DM Sans', 'Design that sparks', null],
+        ] as [$name, $primary, $secondary, $accent, $heading, $body, $tagline, $slug]) {
+            $kit = $kits->save(null, [
+                'name' => $name, 'primary_color' => $primary, 'secondary_color' => $secondary, 'accent_color' => $accent,
+                'heading_font' => $heading, 'body_font' => $body, 'background_type' => 'gradient',
+                'background_color' => '#FFFFFF', 'background_color2' => $primary, 'background_angle' => 135,
+                'company' => ['name' => $name, 'tagline' => $tagline, 'website' => 'https://'.Str::slug($name).'.example', 'phone' => '+1 555 0100'],
+                'social_links' => ['linkedin' => 'https://www.linkedin.com/company/'.Str::slug($name)],
+            ], $designer);
+            $theme = ($slug ? $themes->firstWhere('slug', $slug) : null) ?? $themes->first();
+            if ($theme) {
+                $kits->createDesign($kit, $theme, $designer, $name.' · Standard');
+            }
         }
     }
 
