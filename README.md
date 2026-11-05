@@ -118,6 +118,9 @@ the scene JSON. Users with `themes.publish` can publish, unpublish and delete th
 | `GHOSTSCRIPT_PATH` | Path to `gs` for CMYK PDFs (auto-detected if empty) |
 | `EXPORT_TIMEOUT` | Seconds before a Chrome render is stopped (default 120) |
 | `EXPORT_DISK` / `EXPORT_RETENTION_DAYS` | Where export files are stored (private `local` disk) and how long they're kept (default 7 days) |
+| `IMPORT_MAX_ROWS` / `IMPORT_MAX_FILE_KB` | Bulk generator limits (default 1000 rows, 5 MB) |
+| `IMPORT_RETENTION_DAYS` | Unfinished bulk runs and their spreadsheets are deleted after this many days (default 7) |
+| `DB_QUEUE_RETRY_AFTER` | Seconds before a running job is retried; keep above the 3600 s bulk job timeout (default 3700) |
 | `SEED_DEMO_DATA` | Force demo seeding in production (do not use on live sites) |
 
 ## Testing
@@ -273,6 +276,35 @@ SVG still works. Without Ghostscript the CMYK option is disabled.
 CMYK profile, not a press-specific ICC profile, so ask your printer for a proof if colour
 matching is critical. Most digital card printers accept the RGB PDF and convert themselves.
 
+## Bulk generator
+
+**Customers → Bulk generator** (needs `imports.manage`: admins and sales managers).
+
+1. **Upload** a `.csv`, `.xlsx`, `.xls` or `.ods` file with one customer per row and column
+   names in the first row (up to 1000 rows). Download the Excel or CSV template from the
+   upload page, or try [docs/samples/bulk-sample.csv](docs/samples/bulk-sample.csv).
+2. **Match columns.** Common headers ("Name", "Phone", "Job title", "Company", "Slug"…)
+   are matched automatically; every field can be changed. Choose a published card theme
+   or one of your designs as the template, whether to create digital profiles (with the
+   profile theme), and whether to skip people who already exist (same email).
+3. **Check rows.** Every row is validated with the customer form's rules, plus duplicate
+   emails in the file, existing customers and profile addresses that are taken or
+   reserved. Problems are listed by spreadsheet row and column, with a downloadable CSV
+   report. A preview shows the rows that will be created. Websites without `https://`
+   are fixed automatically.
+4. **Generate** (queued). Each valid row becomes a customer, a card design filled with
+   their details and, optionally, a digital profile with its public URL, QR code and NFC
+   link. Rows are created all-or-nothing, so a failed row leaves nothing half made.
+5. **Download** every card as a ZIP (one PDF, PNG or SVG per card, plus `cards.csv`) or as
+   one combined PDF with every card's pages in order, using the same print options as
+   single exports. "Customer and card list (CSV)" lists names, design ids, profile, QR
+   and NFC URLs and profile codes for production.
+
+The uploaded spreadsheet is deleted once generation finishes, and the error report keeps
+row numbers and messages only, not the submitted values. Unfinished runs are deleted by
+`php artisan imports:prune` (scheduled daily). CSV downloads neutralise spreadsheet
+formulas in user-supplied values.
+
 ## Security notes
 
 - Passwords hashed with bcrypt; stronger password rules in production.
@@ -293,7 +325,7 @@ matching is critical. Most digital card printers accept the RGB PDF and convert 
 4. **Customer management**: list, search, forms, uploads, visibility, logins, API ✅
 5. **Digital business cards**: public profiles, 5 profile themes, layouts, vCard, QR downloads, NFC assignment ✅
 6. **Export engine**: PNG/SVG/PDF, 150–600 DPI, bleed, crop marks, print boxes, CMYK, queued downloads ✅
-7. Bulk generation (CSV/Excel import, ZIP, combined PDF)
+7. **Bulk generation**: CSV/Excel import, column mapping, validation report, batch customers/designs/profiles/QR, ZIP and combined PDF ✅
 8. Inventory and analytics
 9. Testing hardening, performance, deployment guide
 

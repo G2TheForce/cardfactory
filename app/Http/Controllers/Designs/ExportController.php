@@ -66,7 +66,7 @@ class ExportController extends Controller
         $user = $request->user();
         $exports = CardExport::query()
             ->when(! $user->can('exports.manage') || ! $request->boolean('all'), fn ($q) => $q->where('user_id', $user->id))
-            ->with(['cardDesign:id,ulid,name', 'user:id,name'])
+            ->with(['cardDesign:id,ulid,name', 'customerImport:id,ulid,original_filename,generated_rows', 'user:id,name'])
             ->latest()->paginate(25)->withQueryString();
 
         return view('exports.index', [

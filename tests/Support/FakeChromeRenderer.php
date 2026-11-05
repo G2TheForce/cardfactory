@@ -23,10 +23,10 @@ class FakeChromeRenderer extends ChromeRenderer
         return '/usr/bin/fake-chrome';
     }
 
-    public function pdf(string $html, string $outPath): void
+    public function pdf(string $html, string $outPath, ?int $timeout = null): void
     {
         $this->html[] = $html;
-        file_put_contents($outPath, self::minimalPdf(max(1, substr_count($html, 'class="page"')), 300, 200));
+        file_put_contents($outPath, self::minimalPdf(max(1, substr_count($html, 'class="page ')), 300, 200));
     }
 
     public function png(string $html, int $cssWidth, int $cssHeight, float $scale, string $outPath, bool $transparent = false): void

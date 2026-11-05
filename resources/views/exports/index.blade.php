@@ -36,12 +36,17 @@
                         @php $o = $export->options ?? []; @endphp
                         <tr>
                             <td class="font-medium text-gray-900">
-                                @if ($export->cardDesign)<a href="{{ route('designs.export', $export->cardDesign) }}" class="hover:text-brand-700">{{ $export->cardDesign->name }}</a>@else<span class="text-gray-400">Deleted design</span>@endif
+                                @if ($export->customer_import_id)
+                                    @if ($export->customerImport)
+                                        <a href="{{ route('imports.show', $export->customerImport) }}" class="hover:text-brand-700"><x-lucide-layers class="mr-1 inline h-3.5 w-3.5 text-gray-400" />{{ $export->customerImport->original_filename }}</a>
+                                        <span class="block text-xs font-normal text-gray-500">{{ ! empty($o['combined']) ? 'Combined PDF' : 'ZIP of '.strtoupper($o['format'] ?? 'pdf').' files' }} · {{ $export->customerImport->generated_rows }} cards</span>
+                                    @else<span class="text-gray-400">Deleted import</span>@endif
+                                @elseif ($export->cardDesign)<a href="{{ route('designs.export', $export->cardDesign) }}" class="hover:text-brand-700">{{ $export->cardDesign->name }}</a>@else<span class="text-gray-400">Deleted design</span>@endif
                             </td>
                             <td><span class="badge-brand">{{ strtoupper($export->format) }}</span> <span class="text-xs text-gray-500">{{ \App\Services\CardExportService::SIDES[$export->sides] ?? $export->sides }}</span></td>
                             <td class="text-xs text-gray-500">
                                 {{ collect([
-                                    $export->format === 'png' ? ($o['dpi'] ?? 300).' DPI' : null,
+                                    ($o['format'] ?? $export->format) === 'png' ? ($o['dpi'] ?? 300).' DPI' : null,
                                     'bleed '.($o['bleed_mm'] ?? 0).' mm',
                                     ! empty($o['crop_marks']) ? 'crop marks' : null,
                                     ! empty($o['cmyk']) ? 'CMYK' : null,

@@ -41,9 +41,9 @@ class ChromeRenderer
     }
 
     /** Render HTML to a PDF file. Page size comes from the HTML's CSS @page rule. */
-    public function pdf(string $html, string $outPath): void
+    public function pdf(string $html, string $outPath, ?int $timeout = null): void
     {
-        $this->run($html, ['--no-pdf-header-footer', '--print-to-pdf='.$outPath], $outPath);
+        $this->run($html, ['--no-pdf-header-footer', '--print-to-pdf='.$outPath], $outPath, $timeout);
     }
 
     /**
@@ -64,7 +64,7 @@ class ChromeRenderer
         $this->run($html, $args, $outPath);
     }
 
-    private function run(string $html, array $args, string $outPath): void
+    private function run(string $html, array $args, string $outPath, ?int $timeout = null): void
     {
         $binary = $this->binary() ?? throw new RuntimeException('Headless Chrome is not installed. Set CHROME_PATH or install chromium.');
         $work = storage_path('app/private/tmp/chrome-'.Str::random(12));
@@ -83,7 +83,7 @@ class ChromeRenderer
         try {
             @unlink($outPath);
             $process = new Process($command, $work, ['HOME' => $work]);
-            $process->setTimeout((int) config('smartcard.export.timeout', 120));
+            $process->setTimeout($timeout ?? (int) config('smartcard.export.timeout', 120));
             $process->run();
             if (! is_file($outPath) || filesize($outPath) === 0) {
                 throw new RuntimeException('Chrome could not render the export: '.Str::limit(trim($process->getErrorOutput()), 500));

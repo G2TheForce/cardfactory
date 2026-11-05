@@ -34,11 +34,16 @@ class CustomerRequest extends FormRequest
         }
     }
 
+    public const URL_RULE = ['nullable', 'string', 'max:255', 'url:http,https'];
+
+    public const PHONE_RULE = ['nullable', 'string', 'max:40', 'regex:/^[0-9+().\-\s]{3,40}$/'];
+
+    public const PHONE_MESSAGE = 'Use digits, spaces and + ( ) - only.';
+
     public function rules(): array
     {
         $staff = $this->user()->can('customers.manage');
-        $url = ['nullable', 'string', 'max:255', 'url:http,https'];
-        $phone = ['nullable', 'string', 'max:40', 'regex:/^[0-9+().\-\s]{3,40}$/'];
+        [$url, $phone] = [self::URL_RULE, self::PHONE_RULE];
 
         return [
             'full_name' => [...($this->isMethod('patch') ? ['sometimes'] : []), 'required', 'string', 'max:120'],
@@ -104,7 +109,7 @@ class CustomerRequest extends FormRequest
     public function messages(): array
     {
         return [
-            '*.regex' => 'Use digits, spaces and + ( ) - only.',
+            '*.regex' => self::PHONE_MESSAGE,
             'social_links.*.url' => 'Enter a full link starting with https://',
             'custom_links.*.url.url' => 'Enter a full link starting with https://',
         ];

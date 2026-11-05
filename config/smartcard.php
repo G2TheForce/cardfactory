@@ -67,6 +67,14 @@ return [
         'reserved_slugs' => ['admin', 'api', 'app', 'login', 'logout', 'register', 'dashboard', 'settings', 'support', 'help', 'www', 'mail', 'card', 'cards', 'profile', 'profiles', 'new', 'edit', 'create'],
     ],
 
+    'imports' => [
+        // Rows per bulk generation file, and the largest upload in KB.
+        'max_rows' => (int) env('IMPORT_MAX_ROWS', 1000),
+        'max_file_kb' => (int) env('IMPORT_MAX_FILE_KB', 5120),
+        // Unfinished imports (and their uploaded files) are deleted after this many days.
+        'retention_days' => (int) env('IMPORT_RETENTION_DAYS', 7),
+    ],
+
     'export' => [
         // Headless Chrome/Chromium renders PNG and PDF. Leave empty to auto-detect.
         'chrome_binary' => env('CHROME_PATH'),

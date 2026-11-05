@@ -14,7 +14,8 @@ class ProcessCardExport implements ShouldQueue
 
     public int $tries = 2;
 
-    public int $timeout = 300;
+    // Bulk exports of many cards can take a while (keep queue retry_after above this).
+    public int $timeout = 3600;
 
     public function __construct(public CardExport $export)
     {
