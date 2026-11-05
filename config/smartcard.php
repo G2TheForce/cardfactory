@@ -70,6 +70,13 @@ return [
     // Currency for orders and revenue.
     'currency' => env('APP_CURRENCY', 'USD'),
 
+    // Browser security headers (app/Http/Middleware/SecurityHeaders.php).
+    'security' => [
+        'csp' => (bool) env('SECURITY_CSP', true),
+        // Strict-Transport-Security on HTTPS requests. Only enable once the whole domain is served over HTTPS.
+        'hsts' => (bool) env('SECURITY_HSTS', false),
+    ],
+
     'imports' => [
         // Rows per bulk generation file, and the largest upload in KB.
         'max_rows' => (int) env('IMPORT_MAX_ROWS', 1000),

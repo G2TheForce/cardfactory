@@ -22,6 +22,6 @@
         "@tailwindcss/forms": "^0.5.11",
         "alpinejs": "^3.17.5",
         "chart.js": "^4.6.1",
-        "fabric": "^6.9.1"
+        "fabric": "^7.4.0"
     }
 }
