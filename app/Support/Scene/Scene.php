@@ -80,6 +80,7 @@ final class Scene
             'country' => 'United States',
             'tagline' => 'Strategy · Growth · Partnerships',
             'profile_url' => rtrim(config('app.url'), '/').'/card/alexandra-morgan',
+            'qr_url' => rtrim(config('app.url'), '/').'/card/alexandra-morgan',
             'logo' => null,
             'photo' => null,
             'initials' => 'AM',

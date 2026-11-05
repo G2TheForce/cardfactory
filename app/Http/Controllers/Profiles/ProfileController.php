@@ -1,0 +1,205 @@
+<?php
+
+namespace App\Http\Controllers\Profiles;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Profiles\ProfileRequest;
+use App\Models\AnalyticsEvent;
+use App\Models\CardDesign;
+use App\Models\Customer;
+use App\Models\DigitalProfile;
+use App\Policies\CustomerPolicy;
+use App\Policies\DigitalProfilePolicy;
+use App\Services\DigitalProfileService;
+use App\Services\NFCManagementService;
+use App\Services\QRCodeService;
+use App\Support\ProfileThemes;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\View\View;
+
+class ProfileController extends Controller
+{
+    public function __construct(private readonly DigitalProfileService $profiles) {}
+
+    public function index(Request $request): View
+    {
+        $user = $request->user();
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:80'],
+            'status' => ['nullable', Rule::in(['live', 'off'])],
+            'theme' => ['nullable', Rule::in(array_keys(ProfileThemes::THEMES))],
+        ]);
+
+        $profiles = DigitalProfilePolicy::visibleTo($user)
+            ->with(['customer:id,ulid,full_name,professional_title,profile_photo_path,company_id,status', 'customer.company:id,name'])
+            ->withCount(['nfcAssignments as nfc_count' => fn ($q) => $q->whereNull('ended_at')])
+            ->when($filters['status'] ?? null, fn ($q, $s) => $q->where('is_active', $s === 'live'))
+            ->when($filters['theme'] ?? null, fn ($q, $t) => $q->where('profile_theme', $t))
+            ->when($filters['search'] ?? null, fn ($q, $s) => $q->where(fn ($q) => $q->where('slug', 'like', "%$s%")
+                ->orWhere('card_identifier', 'like', "%$s%")
+                ->orWhereHas('customer', fn ($c) => $c->where('full_name', 'like', "%$s%")->orWhere('email', 'like', "%$s%"))))
+            ->latest('id')
+            ->paginate(20)->withQueryString();
+
+        return view('profiles.index', [
+            'profiles' => $profiles,
+            'filters' => $filters,
+            'canCreate' => $user->can('create', DigitalProfile::class),
+        ]);
+    }
+
+    public function create(Request $request): View|RedirectResponse
+    {
+        $this->authorize('create', DigitalProfile::class);
+        $user = $request->user();
+        $customers = $this->creatableCustomers($request);
+
+        if ($customers->isEmpty()) {
+            return redirect()->route($user->hasRole('customer') ? 'my-details' : 'customers.create')
+                ->with('warning', 'Add the customer\'s details first, then create their profile.');
+        }
+
+        $selected = $customers->firstWhere('ulid', $request->query('customer')) ?? ($customers->count() === 1 ? $customers->first() : null);
+
+        return view('profiles.create', [
+            'customers' => $customers,
+            'selected' => $selected,
+            'suggested' => $selected ? $this->profiles->suggestSlug($selected->full_name) : '',
+            'themes' => ProfileThemes::THEMES,
+        ]);
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $this->authorize('create', DigitalProfile::class);
+        $data = $request->validate([
+            'customer' => ['required', 'string', 'size:26'],
+            'slug' => ['nullable', 'string', 'min:3', 'max:60', 'regex:'.DigitalProfileService::SLUG_PATTERN],
+            'profile_theme' => ['required', Rule::in(array_keys(ProfileThemes::THEMES))],
+        ], ['slug.regex' => 'Use lowercase letters, numbers and dashes (3–60 characters).']);
+
+        $customer = Customer::where('ulid', $data['customer'])->firstOrFail();
+        $this->authorize('createFor', [DigitalProfile::class, $customer]);
+
+        $profile = $this->profiles->create($customer, [
+            'slug' => isset($data['slug']) ? strtolower($data['slug']) : null,
+            'profile_theme' => $data['profile_theme'],
+            'card_design' => CardDesign::where('customer_id', $customer->id)->latest('updated_at')->first(),
+        ], $request->user());
+
+        return redirect()->route('profiles.show', $profile)->with('success', 'Profile created. It is live at the address below.');
+    }
+
+    public function show(Request $request, DigitalProfile $profile, NFCManagementService $nfc, QRCodeService $qr): View
+    {
+        $this->authorize('view', $profile);
+        $profile->load('customer.company', 'cardDesign:id,ulid,name');
+        $qrCode = $this->profiles->qrCode($profile);
+        $style = $qr->style($qrCode->style);
+        $urls = $this->profiles->urls($profile);
+
+        $since = now()->subDays(30);
+        $stats = AnalyticsEvent::where('digital_profile_id', $profile->id)->where('occurred_at', '>=', $since)
+            ->selectRaw('event_type, count(*) as total')->groupBy('event_type')->pluck('total', 'event_type');
+
+        return view('profiles.show', [
+            'profile' => $profile,
+            'customer' => $profile->customer,
+            'urls' => $urls,
+            'qrCode' => $qrCode,
+            'qrStyle' => $style,
+            'qrSvg' => $qr->svg($urls['qr'], 220, $style['color'], $style['background'], $style['margin'], $style['level']),
+            'available' => $this->profiles->isAvailable($profile),
+            'cards' => $nfc->cardsFor($profile)->map(fn ($a) => $a->setAttribute('tag_url', $nfc->tagUrl($a->nfcCard))),
+            'history' => $nfc->historyFor($profile),
+            'canEdit' => $request->user()->can('update', $profile),
+            'canNfc' => $request->user()->can('manageNfc', $profile),
+            'tagTypes' => NFCManagementService::TAG_TYPES,
+            'stats' => [
+                'Views' => (int) ($stats[AnalyticsEvent::PROFILE_VIEW] ?? 0),
+                'QR scans' => (int) ($stats[AnalyticsEvent::QR_SCAN] ?? 0),
+                'NFC taps' => (int) ($stats[AnalyticsEvent::NFC_TAP] ?? 0),
+                'Contacts saved' => (int) ($stats[AnalyticsEvent::VCARD_DOWNLOAD] ?? 0),
+                'Button clicks' => (int) collect($stats)->filter(fn ($v, $k) => str_starts_with($k, 'click_'))->sum(),
+            ],
+        ]);
+    }
+
+    public function edit(DigitalProfile $profile): View
+    {
+        $this->authorize('update', $profile);
+        $profile->load('customer');
+
+        return view('profiles.edit', [
+            'profile' => $profile,
+            'settings' => $this->profiles->settings($profile),
+            'layout' => ProfileThemes::normaliseLayout($profile->layout),
+            'themes' => ProfileThemes::THEMES,
+            'designs' => CardDesign::where('customer_id', $profile->customer_id)->latest('updated_at')->get(['id', 'ulid', 'name']),
+        ]);
+    }
+
+    public function update(ProfileRequest $request, DigitalProfile $profile): RedirectResponse
+    {
+        $data = $request->safe()->except(['cover', 'portfolio', 'card_design']);
+        // The web form omits an empty button list entirely.
+        if ($request->boolean('_form')) {
+            $data += ['ctas' => []];
+        }
+        if ($request->has('card_design')) {
+            $data['card_design'] = $request->input('card_design')
+                ? CardDesign::where('ulid', $request->input('card_design'))->firstOrFail()
+                : null;
+        }
+
+        $this->profiles->update($profile, $data, $request->user(), [
+            'cover' => $request->file('cover'),
+            'portfolio' => $request->file('portfolio', []),
+        ]);
+
+        return redirect()->route('profiles.edit', [$profile, 'tab' => $request->input('_tab')])->with('success', 'Profile saved.');
+    }
+
+    public function destroy(Request $request, DigitalProfile $profile): RedirectResponse
+    {
+        $this->authorize('delete', $profile);
+        $this->profiles->delete($profile, $request->user());
+
+        return redirect()->route('profiles.index')->with('success', 'Profile deleted. Its QR code and NFC cards no longer open it.');
+    }
+
+    /** Owner/staff preview of the public page: works while inactive and isn't counted. */
+    public function preview(DigitalProfile $profile): View
+    {
+        $this->authorize('view', $profile);
+
+        return view('profiles.public', [
+            'profile' => $profile,
+            'p' => $this->profiles->publicData($profile),
+            'urls' => $this->profiles->urls($profile),
+            'preview' => true,
+            'available' => $this->profiles->isAvailable($profile),
+        ]);
+    }
+
+    /** Customer accounts: jump to their profile, or start one. */
+    public function mine(Request $request): RedirectResponse
+    {
+        $customer = $request->user()->customerProfile;
+        $profile = $customer?->digitalProfiles()->latest('id')->first();
+
+        return $profile ? redirect()->route('profiles.show', $profile) : redirect()->route('profiles.create');
+    }
+
+    private function creatableCustomers(Request $request)
+    {
+        $user = $request->user();
+        if ($user->can('profiles.manage') || $user->can('customers.manage')) {
+            return CustomerPolicy::visibleTo($user)->orderBy('full_name')->limit(1000)->get(['id', 'ulid', 'full_name', 'email']);
+        }
+
+        return Customer::where('user_id', $user->id)->get(['id', 'ulid', 'full_name', 'email']);
+    }
+}

@@ -79,17 +79,22 @@
             </section>
 
             <section class="card">
-                <div class="card-header"><h2 class="card-title">Digital profiles &amp; NFC cards</h2></div>
+                <div class="card-header">
+                    <h2 class="card-title">Digital profiles &amp; NFC cards</h2>
+                    @can('createFor', [App\Models\DigitalProfile::class, $customer])
+                        <a href="{{ route('profiles.create', ['customer' => $customer->ulid]) }}" class="btn-secondary btn-sm"><x-lucide-plus class="h-3.5 w-3.5" /> New profile</a>
+                    @endcan
+                </div>
                 <div class="grid grid-cols-1 divide-y divide-gray-100 md:grid-cols-2 md:divide-x md:divide-y-0">
                     <div class="p-5">
                         <h3 class="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Profiles</h3>
                         @forelse ($profiles as $profile)
-                            <div class="flex items-center justify-between py-1.5 text-sm">
+                            <a href="{{ route('profiles.show', $profile) }}" class="-mx-2 flex items-center justify-between rounded-lg px-2 py-1.5 text-sm hover:bg-gray-50">
                                 <span class="truncate font-mono text-xs text-gray-700">/card/{{ $profile->slug }}</span>
                                 <span class="{{ $profile->is_active ? 'badge-green' : 'badge-gray' }}">{{ $profile->is_active ? 'Live' : 'Off' }}</span>
-                            </div>
+                            </a>
                         @empty
-                            <p class="text-sm text-gray-400">No digital profile yet. Profiles arrive in the next phase.</p>
+                            <p class="text-sm text-gray-400">No digital profile yet.</p>
                         @endforelse
                     </div>
                     <div class="p-5">
@@ -97,7 +102,7 @@
                         @forelse ($nfc as $assignment)
                             <div class="flex items-center justify-between py-1.5 text-sm">
                                 <span class="font-mono text-xs text-gray-700">{{ $assignment->nfcCard?->card_identifier ?? 'Card' }}</span>
-                                <span class="badge-gray">{{ ucfirst($assignment->status) }}</span>
+                                <span class="{{ $assignment->status === 'active' ? 'badge-green' : 'badge-gray' }}">{{ ucfirst($assignment->status) }}</span>
                             </div>
                         @empty
                             <p class="text-sm text-gray-400">No NFC card assigned.</p>

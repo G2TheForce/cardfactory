@@ -14,7 +14,7 @@ class DigitalProfile extends Model
     use HasFactory, HasPublicUlid, SoftDeletes;
 
     protected $fillable = [
-        'customer_id', 'card_design_id', 'slug', 'profile_theme', 'layout', 'settings',
+        'customer_id', 'card_design_id', 'slug', 'card_identifier', 'profile_theme', 'layout', 'settings',
         'is_active', 'published_at', 'views_count',
     ];
 

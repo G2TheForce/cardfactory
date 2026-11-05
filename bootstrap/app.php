@@ -30,6 +30,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('web', EnsureUserIsActive::class);
         $middleware->appendToGroup('api', EnsureUserIsActive::class);
         $middleware->redirectUsersTo('/dashboard');
+        // Public click beacons carry no personal data and no session state.
+        $middleware->validateCsrfTokens(except: ['card/*/track']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

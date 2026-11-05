@@ -149,3 +149,51 @@ you leave out are kept as they are.
 
 More endpoints (designs, profiles, NFC, exports) are added in later phases and
 documented here.
+
+### Digital profiles
+
+Everyone sees the profiles they may view (staff with `profiles.manage` or
+`customers.view-any` see all; customer accounts see their own). Creating and
+editing needs `profiles.manage` / `customers.manage`, or owning the customer record.
+
+| Method | Path | Ability |
+| --- | --- | --- |
+| `GET` | `/profiles?search=&active=1&customer={customer id}&per_page=25` | `read` |
+| `GET` | `/profiles/{id}` | `read` |
+| `GET` | `/profiles/{id}/qr.png?size=1024` (512, 1024, 2048, 4096) | `read` |
+| `GET` | `/profiles/{id}/qr.svg?size=1024` (512, 1024) | `read` |
+| `GET` | `/profiles/{id}/qr.pdf?size=50` (25, 50, 100 mm) | `read` |
+| `POST` | `/profiles` `{customer, slug?, profile_theme?}` | `write` |
+| `PATCH` / `PUT` | `/profiles/{id}` | `write` |
+| `DELETE` | `/profiles/{id}` (soft delete; releases NFC cards) | `write` |
+
+Update fields: `slug`, `profile_theme` (`classic`, `minimal`, `bold`, `midnight`,
+`elegant`), `accent` (`#rrggbb`), `button_style` (`rounded`, `pill`, `square`),
+`headline`, `is_active`, `allow_indexing`, `show_save_contact`, `show_qr`, `map_embed`,
+`layout[] {key, enabled}` (keys: `actions`, `ctas`, `about`, `contact`, `social`,
+`links`, `business`, `portfolio`, `map`), `ctas[] {label, url, style: solid|outline}`
+(max 6), `card_design` (design id), and multipart `cover` / `portfolio[]` images.
+
+```json
+{
+  "data": {
+    "id": "01M6NHBPWXDC3BWK4RDZW0Z97Y",
+    "slug": "casey-customer",
+    "card_identifier": "P-UZB2HMXG",
+    "is_active": true,
+    "available": true,
+    "customer": { "id": "01M6...", "full_name": "Casey Customer" },
+    "theme": "classic", "accent": "#4f46e5", "button_style": "rounded",
+    "urls": {
+      "public": "https://example.com/card/casey-customer",
+      "qr": "https://example.com/q/gmdcvwtzxe",
+      "nfc": "https://example.com/c/P-UZB2HMXG",
+      "vcard": "https://example.com/card/casey-customer/vcard",
+      "qr_png": "...", "qr_svg": "...", "qr_pdf": "..."
+    },
+    "stats": { "views": 26, "qr_scans": 7 },
+    "nfc_cards": [{ "card_identifier": "SC-YIVBR2XX", "uid": "F3:CB:AA:06:E0:1F:DC", "tag_type": "NTAG213",
+                    "status": "active", "tag_url": "https://example.com/n/SC-YIVBR2XX" }]
+  }
+}
+```

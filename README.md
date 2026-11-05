@@ -4,7 +4,7 @@ A Laravel SaaS application for designing, generating, managing and exporting
 professional **NFC smart visiting cards**, their **QR codes** and the
 **digital business profiles** they link to.
 
-> Status: **Phases 1–4** complete (foundation, theme management, visual card designer, customer management). See [Roadmap](#roadmap).
+> Status: **Phases 1–5** complete (foundation, theme management, visual card designer, customer management, digital business cards). See [Roadmap](#roadmap).
 
 ## Stack
 
@@ -111,6 +111,7 @@ the scene JSON. Users with `themes.publish` can publish, unpublish and delete th
 | `QUEUE_CONNECTION` | `database` by default; use `redis` in production |
 | `MAIL_*` | Password reset and contact-form mail |
 | `SMARTCARD_CONTACT_EMAIL` | Recipient for landing-page enquiries |
+| `ANALYTICS_COUNTRY_HEADER` | Header with the visitor's country set by your CDN (default `CF-IPCountry`; empty disables country stats) |
 | `SEED_DEMO_DATA` | Force demo seeding in production (do not use on live sites) |
 
 ## Testing
@@ -198,6 +199,37 @@ Hidden card details are left blank when designs are filled in (`CardDesignServic
 - Photos and logos are re-encoded (max 1200 px); the detail page shows designs,
   profiles, NFC cards, completeness and the activity log.
 
+## Digital business cards
+
+Every profile (`/profiles`) is a mobile-first public page at `/card/{slug}` with call,
+WhatsApp, email and website buttons, **Save contact** (a vCard 3.0 `.vcf` with photo),
+contact details, social links, custom buttons, services and opening hours, a portfolio
+gallery, a click-to-load map, Share and an on-screen QR code. It shows only the details
+the customer marked "show on profile".
+
+- **Themes and layout**: five profile themes (Classic, Minimal, Bold, Midnight, Elegant),
+  independent of card themes, plus accent colour, button shape, headline and cover image.
+  Sections can be reordered and switched off per profile.
+- **Links**: each profile has a unique slug, a card identifier (`P-XXXXXXXX`), a QR link
+  `/q/{code}` and an NFC link `/c/{identifier}`. Changing the slug never breaks QR codes or
+  NFC cards. Card designs' QR codes encode the tracked `/q/` link.
+- **QR downloads**: PNG (512–4096 px), SVG and vector PDF (25/50/100 mm), with colour,
+  transparent background, quiet zone and error-correction settings. Low-contrast colours are refused.
+- **NFC cards** (`nfc.manage`): assign a card by its printed ID (new IDs are added to
+  stock), record the tag UID, mark it encoded, move it to another profile, replace a lost
+  or damaged card, or unassign it. Each card is written once with its permanent URL
+  `/n/{card id}`, which is resolved on every tap, so reassigning needs no rewriting and a
+  lost card stops working straight away. The first tap activates a newly assigned card.
+  The app does not program tags itself: staff use an NFC writer app or USB writer, and
+  on Android Chrome a **Write with this phone** button uses Web NFC.
+- **Privacy-friendly analytics**: views, QR scans, NFC taps, contact downloads and clicks
+  are stored without IP addresses or full user agents. Unique visitors use a salted hash
+  that changes daily; Do Not Track / Global Privacy Control requests skip even that.
+  Bots, reloads within 30 minutes and the owner's own visits aren't counted.
+- Inactive profiles, inactive customers and deleted profiles show a "not available"
+  page (404) for the public page, QR and NFC links. Profiles are hidden from search
+  engines unless the owner opts in.
+
 ## Security notes
 
 - Passwords hashed with bcrypt; stronger password rules in production.
@@ -216,7 +248,7 @@ Hidden card details are left blank when designs are filled in (`CardDesignServic
 2. **Theme management**: 20 editable themes, gallery, customiser, favourites, publishing ✅
 3. **Visual card designer**: canvas editor, uploads, layers, undo/redo, front/back, save/load ✅
 4. **Customer management**: list, search, forms, uploads, visibility, logins, API ✅
-5. Digital business cards (public profiles, vCard, QR, NFC URLs)
+5. **Digital business cards**: public profiles, 5 profile themes, layouts, vCard, QR downloads, NFC assignment ✅
 6. Export engine (PNG/SVG/PDF, 300 DPI, bleed, crop marks)
 7. Bulk generation (CSV/Excel import, ZIP, combined PDF)
 8. Inventory and analytics

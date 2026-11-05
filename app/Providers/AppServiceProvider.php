@@ -35,6 +35,7 @@ class AppServiceProvider extends ServiceProvider
         // Named limiters keep separate counters (plain throttle:x,y share one counter per user).
         RateLimiter::for('previews', fn (Request $request) => Limit::perMinute(600)->by('previews:'.($request->user()?->id ?: $request->ip())));
         RateLimiter::for('saves', fn (Request $request) => Limit::perMinute(60)->by('saves:'.($request->user()?->id ?: $request->ip())));
+        RateLimiter::for('beacons', fn (Request $request) => Limit::perMinute(60)->by('beacons:'.$request->ip()));
         RateLimiter::for('uploads', fn (Request $request) => Limit::perMinute(30)->by('uploads:'.($request->user()?->id ?: $request->ip())));
 
         Event::listen(Login::class, function (Login $event) {

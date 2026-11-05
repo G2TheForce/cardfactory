@@ -36,7 +36,27 @@ class DemoUsersSeeder extends Seeder
                     'email' => $email,
                     'professional_title' => 'Marketing Director',
                     'designation' => 'Marketing Director',
+                    'department' => 'Brand & Growth',
                     'mobile' => '+15550100200',
+                    'whatsapp' => '+15550100200',
+                    'office_phone' => '+1 555 010 7700',
+                    'website' => 'https://example.com',
+                    'office_address' => '120 Market Street, Suite 400',
+                    'city' => 'San Francisco',
+                    'province' => 'CA',
+                    'country' => 'United States',
+                    'latitude' => 37.7936,
+                    'longitude' => -122.3965,
+                    'introduction' => 'I lead brand and growth marketing, helping B2B teams turn great products into stories people remember. Happy to talk partnerships, events and speaking.',
+                    'social_links' => ['linkedin' => 'https://linkedin.com/in/example', 'instagram' => 'https://instagram.com/example', 'x' => 'https://x.com/example'],
+                    'business' => [
+                        'description' => null,
+                        'services' => ['Brand strategy', 'Campaigns', 'Events', 'Public speaking'],
+                        'hours' => ['monday' => '9:00 – 17:30', 'tuesday' => '9:00 – 17:30', 'wednesday' => '9:00 – 17:30', 'thursday' => '9:00 – 17:30', 'friday' => '9:00 – 15:00'],
+                    ],
+                    'booking_url' => 'https://example.com/book',
+                    'custom_links' => [['label' => 'Latest case study', 'url' => 'https://example.com/case-study']],
+                    'status' => 'active',
                 ]);
             }
         }

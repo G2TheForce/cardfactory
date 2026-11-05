@@ -12,7 +12,6 @@ use App\Support\Scene\SceneValidator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -222,9 +221,9 @@ class CardDesignService
         $parts = preg_split('/\s+/', $name) ?: [];
         $initials = mb_strtoupper(mb_substr($parts[0] ?? '', 0, 1).(count($parts) > 1 ? mb_substr(end($parts), 0, 1) : ''));
         $profile = $customer->digitalProfiles()->where('is_active', true)->latest('id')->first();
-        $profileUrl = $profile && Route::has('profiles.public')
-            ? route('profiles.public', $profile->slug)
-            : rtrim(config('app.url'), '/').'/card/'.($profile->slug ?? Str::slug($name));
+        $profileUrl = $profile ? route('profiles.public', $profile->slug) : rtrim(config('app.url'), '/').'/card/'.Str::slug($name);
+        // QR codes on cards point at the short /q/ link so scans are counted.
+        $qrUrl = $profile ? route('qr.scan', app(DigitalProfileService::class)->qrCode($profile)->code) : $profileUrl;
 
         $data = [
             'full_name' => $name,
@@ -243,6 +242,7 @@ class CardDesignService
             'country' => (string) ($customer->country ?: $company?->country),
             'tagline' => (string) ($customer->business['description'] ?? $company?->description ?? ''),
             'profile_url' => $profileUrl,
+            'qr_url' => $qrUrl,
             'logo' => $company?->logo_path ? Storage::disk('public')->url($company->logo_path) : null,
             'photo' => $customer->profile_photo_path ? Storage::disk('public')->url($customer->profile_photo_path) : null,
             'initials' => $initials,

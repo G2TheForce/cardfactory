@@ -42,3 +42,4 @@ Route::middleware(['auth'])->group(function () {
 require __DIR__.'/themes.php';
 require __DIR__.'/designs.php';
 require __DIR__.'/customers.php';
+require __DIR__.'/profiles.php';

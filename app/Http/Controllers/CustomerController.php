@@ -95,7 +95,7 @@ class CustomerController extends Controller
             'previews' => $previews,
             'fontsUrl' => Fonts::googleUrl($previews->flatMap(fn ($p) => $p['fonts'])->all()),
             'profiles' => $customer->digitalProfiles()->latest()->get(),
-            'nfc' => $customer->nfcAssignments()->with('nfcCard')->latest()->limit(10)->get(),
+            'nfc' => $customer->nfcAssignments()->whereNull('ended_at')->with('nfcCard')->latest()->limit(10)->get(),
             'activity' => $request->user()->can('activity.view') || $request->user()->can('customers.manage')
                 ? ActivityLog::where('subject_type', $customer->getMorphClass())->where('subject_id', $customer->id)->with('user:id,name')->latest()->limit(15)->get()
                 : collect(),

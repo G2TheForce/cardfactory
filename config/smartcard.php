@@ -62,6 +62,17 @@ return [
         'print_dpi' => 300,
     ],
 
+    'profiles' => [
+        // Slugs that would clash with app pages or look official.
+        'reserved_slugs' => ['admin', 'api', 'app', 'login', 'logout', 'register', 'dashboard', 'settings', 'support', 'help', 'www', 'mail', 'card', 'cards', 'profile', 'profiles', 'new', 'edit', 'create'],
+    ],
+
+    'analytics' => [
+        // Request header holding the visitor's country code, set by a trusted proxy/CDN
+        // (Cloudflare sends CF-IPCountry). Leave empty to skip country analytics.
+        'country_header' => env('ANALYTICS_COUNTRY_HEADER', 'CF-IPCountry'),
+    ],
+
     // Seed demo accounts and sample data even in production (never on a live site).
     'seed_demo_data' => (bool) env('SEED_DEMO_DATA', false),
 

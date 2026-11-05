@@ -298,7 +298,8 @@ class CardRenderingService
 
     private function qrElement(array $el, float $w, float $h): string
     {
-        $data = $this->merge((string) $el['data']);
+        // {{profile_url}} in a QR code encodes the tracked short link when there is one.
+        $data = $this->merge(isset($this->data['qr_url']) ? str_replace('{{profile_url}}', '{{qr_url}}', (string) $el['data']) : (string) $el['data']);
         ['path' => $path, 'modules' => $modules] = $this->qr->modulePath($data);
         $margin = (float) ($el['margin'] ?? 1);
         $size = min($w, $h);

@@ -10,13 +10,13 @@ use App\Models\CardOrder;
 use App\Models\CardTheme;
 use App\Models\Company;
 use App\Models\Customer;
-use App\Models\DigitalProfile;
 use App\Models\NfcAssignment;
 use App\Models\NfcCard;
-use App\Models\QrCode;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Services\CardDesignService;
+use App\Services\DigitalProfileService;
+use App\Support\ProfileThemes;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -68,6 +68,8 @@ class DemoDataSeeder extends Seeder
         });
 
         $themes = CardTheme::where('status', CardTheme::STATUS_PUBLISHED)->get();
+        $profiles = app(DigitalProfileService::class);
+        $profileThemes = array_keys(ProfileThemes::THEMES);
 
         foreach ($customers as $i => $customer) {
             $created = Carbon::parse($customer->created_at);
@@ -99,17 +101,19 @@ class DemoDataSeeder extends Seeder
                 continue; // some customers have no digital profile yet
             }
 
-            $profile = DigitalProfile::factory()->create([
-                'customer_id' => $customer->id,
-                'slug' => Str::slug($customer->full_name).'-'.Str::lower(Str::random(4)),
-                'is_active' => $i % 9 !== 0,
-                'created_at' => $created,
-            ]);
-            $qr = QrCode::create([
-                'digital_profile_id' => $profile->id,
-                'code' => Str::lower(Str::random(10)),
-                'target_url' => url('/card/'.$profile->slug),
-            ]);
+            $profile = $profiles->create($customer, [
+                'slug' => $customer->user_id ? 'casey-customer' : null,
+                'profile_theme' => $profileThemes[$i % count($profileThemes)],
+            ], $admin);
+            $profile->forceFill(['is_active' => $i % 9 !== 0, 'created_at' => $created])->save();
+            if ($customer->user_id) {
+                $profile->update(['settings' => array_merge($profile->settings, [
+                    'headline' => 'Let\'s build something people remember.',
+                    'ctas' => [['label' => 'Book a meeting', 'url' => 'https://example.com/book', 'style' => 'solid']],
+                    'map_embed' => true,
+                ])]);
+            }
+            $qr = $profiles->qrCode($profile);
 
             $nfc = null;
             if ($i % 2 === 0 && $card = $nfcCards->firstWhere('status', 'in_stock')) {
@@ -120,7 +124,7 @@ class DemoDataSeeder extends Seeder
                     'digital_profile_id' => $profile->id,
                     'assigned_by' => $sales->id,
                     'status' => 'active',
-                    'profile_url' => $qr->target_url,
+                    'profile_url' => route('nfc.tap', $card->card_identifier),
                     'assigned_at' => $created,
                     'activated_at' => $created,
                 ]);
