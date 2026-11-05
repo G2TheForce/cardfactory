@@ -16,7 +16,7 @@
         @if ($fontsUrl)<link rel="stylesheet" href="{{ $fontsUrl }}">@endif
     @endpush
     <x-slot:breadcrumbs>
-        <a href="{{ route('customers.index') }}" class="hover:text-gray-700">Customers</a><span>/</span><span class="text-gray-900">{{ $customer->full_name }}</span>
+        @can('viewAny', App\Models\Customer::class)<a href="{{ route('customers.index') }}" class="hover:text-gray-700">Customers</a><span>/</span>@endcan<span class="text-gray-900">{{ $customer->full_name }}</span>
     </x-slot:breadcrumbs>
 
     <div class="mb-8 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
@@ -67,12 +67,15 @@
                 @else
                     <div class="grid grid-cols-1 gap-5 p-5 sm:grid-cols-2 2xl:grid-cols-3">
                         @foreach ($designs as $design)
-                            <a href="{{ route('designs.edit', $design) }}" class="group block">
-                                @php $w = min(100, round(63.1 * (float) $design->width_mm / max(1, (float) $design->height_mm), 1)); @endphp
+                            @php
+                                $w = min(100, round(63.1 * (float) $design->width_mm / max(1, (float) $design->height_mm), 1));
+                                $editable = auth()->user()->can('update', $design);
+                            @endphp
+                            <{{ $editable ? 'a' : 'div' }} @if ($editable) href="{{ route('designs.edit', $design) }}" @endif class="group block">
                                 <div class="mx-auto transition group-hover:-translate-y-0.5" style="width: {{ $w }}%"><x-card-preview :svg="$previews[$design->id]['front']" /></div>
                                 <p class="mt-2 truncate text-sm font-medium text-gray-800 group-hover:text-brand-700">{{ $design->name }}</p>
                                 <p class="text-xs text-gray-400">{{ ucfirst($design->status) }} · updated {{ $design->updated_at->diffForHumans() }}</p>
-                            </a>
+                            </{{ $editable ? 'a' : 'div' }}>
                         @endforeach
                     </div>
                 @endif

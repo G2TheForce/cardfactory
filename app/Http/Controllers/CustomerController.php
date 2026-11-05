@@ -85,7 +85,7 @@ class CustomerController extends Controller
         $this->authorize('view', $customer);
         $customer->load(['company', 'assignedDesigner:id,ulid,name', 'creator:id,name', 'user:id,ulid,email,last_login_at']);
 
-        $recentDesigns = CardDesign::where('customer_id', $customer->id)->latest('updated_at')->limit(6)->get();
+        $recentDesigns = CardDesign::where('customer_id', $customer->id)->with('brandKit')->latest('updated_at')->limit(6)->get()->each->setRelation('customer', $customer);
         $previews = $recentDesigns->mapWithKeys(fn ($d) => [$d->id => $designs->preview($d)]);
 
         return view('customers.show', [

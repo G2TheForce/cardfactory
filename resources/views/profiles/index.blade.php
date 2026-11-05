@@ -50,7 +50,7 @@
                             <td class="tabular-nums">{{ $profile->nfc_count }}</td>
                             <td><span class="{{ $profile->is_active ? 'badge-green' : 'badge-gray' }}">{{ $profile->is_active ? 'Live' : 'Off' }}</span></td>
                             <td class="text-right">
-                                <a href="{{ route('profiles.public', $profile->slug) }}" target="_blank" rel="noopener" class="btn-ghost btn-sm" title="Open public page"><x-lucide-external-link class="h-4 w-4" /><span class="sr-only">Open public page</span></a>
+                                @if ($profile->is_active)<a href="{{ route('profiles.public', $profile->slug) }}" target="_blank" rel="noopener" class="btn-ghost btn-sm" title="Open public page"><x-lucide-external-link class="h-4 w-4" /><span class="sr-only">Open public page</span></a>@endif
                                 <a href="{{ route('profiles.show', $profile) }}" class="btn-secondary btn-sm">Manage</a>
                             </td>
                         </tr>

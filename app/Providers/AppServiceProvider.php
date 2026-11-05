@@ -7,6 +7,7 @@ use App\Services\ActivityLogger;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -25,6 +26,9 @@ class AppServiceProvider extends ServiceProvider
     {
         // Super Admin can do everything; return null (not false) so other users fall through to policies.
         Gate::before(fn (User $user) => $user->hasRole(User::ROLE_SUPER_ADMIN) ? true : null);
+
+        // Catch N+1 queries during development and in tests; production just carries on.
+        Model::preventLazyLoading(! app()->isProduction());
 
         Password::defaults(fn () => app()->isProduction()
             ? Password::min(10)->letters()->mixedCase()->numbers()->uncompromised()

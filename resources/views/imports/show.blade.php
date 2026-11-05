@@ -201,7 +201,7 @@
                                     <tr>
                                         <td><a href="{{ route('customers.show', $customer) }}" class="font-medium text-gray-900 hover:text-brand-700">{{ $customer->full_name }}</a><span class="block text-xs text-gray-500">{{ $customer->professional_title }}{{ $customer->company ? ' · '.$customer->company->name : '' }}</span></td>
                                         <td class="text-sm">@if ($design)<a href="{{ route('designs.edit', $design) }}" class="text-brand-700 hover:underline">Edit</a> · <a href="{{ route('designs.export', $design) }}" class="text-brand-700 hover:underline">Export</a>@else<span class="text-gray-400">—</span>@endif</td>
-                                        <td class="text-sm">@if ($profile)<a href="{{ route('profiles.public', $profile->slug) }}" target="_blank" rel="noopener" class="text-brand-700 hover:underline">/card/{{ $profile->slug }}</a>@else<span class="text-gray-400">—</span>@endif</td>
+                                        <td class="text-sm">@if ($profile?->is_active)<a href="{{ route('profiles.public', $profile->slug) }}" target="_blank" rel="noopener" class="text-brand-700 hover:underline">/card/{{ $profile->slug }}</a>@elseif ($profile)<span class="font-mono text-xs text-gray-500">/card/{{ $profile->slug }} (off)</span>@else<span class="text-gray-400">—</span>@endif</td>
                                         <td class="text-xs text-gray-500">@if ($qr){{ route('qr.scan', $qr->code) }}@else—@endif</td>
                                     </tr>
                                 @endforeach
