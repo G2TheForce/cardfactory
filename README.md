@@ -1,0 +1,153 @@
+# SmartCard Studio
+
+A Laravel SaaS application for designing, generating, managing and exporting
+professional **NFC smart visiting cards**, their **QR codes** and the
+**digital business profiles** they link to.
+
+> Status: **Phase 1 (Foundation)** complete. See [Roadmap](#roadmap).
+
+## Stack
+
+| Layer | Technology |
+| ----- | ---------- |
+| Backend | Laravel 13, PHP 8.3+, MySQL 8 (MariaDB 10.11+ also works) |
+| Auth | Laravel Fortify (session) + Laravel Sanctum (API tokens) |
+| Access control | spatie/laravel-permission (roles + permissions), policies |
+| Frontend | Blade components, Tailwind CSS v4, Alpine.js, Chart.js, Lucide icons |
+| Queues | Laravel queues (database driver by default) |
+
+## Requirements
+
+- PHP 8.3+ with `pdo_mysql`, `mbstring`, `gd` (or `imagick`), `intl`, `zip`, `bcmath`
+- Composer 2
+- Node.js 20+ and npm
+- MySQL 8+ (or MariaDB 10.11+)
+
+## Installation (local development)
+
+```bash
+git clone https://github.com/G2TheForce/cardfactory.git smartcard-studio
+cd smartcard-studio
+
+composer install
+npm install
+
+cp .env.example .env
+php artisan key:generate
+```
+
+Create a database and user, then put the credentials in `.env`:
+
+```sql
+CREATE DATABASE smartcard_studio CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'smartcard'@'localhost' IDENTIFIED BY 'choose-a-password';
+GRANT ALL ON smartcard_studio.* TO 'smartcard'@'localhost';
+```
+
+```bash
+php artisan migrate --seed      # schema + roles + demo data (non-production only)
+php artisan storage:link        # public uploads (avatars, logos)
+npm run build                   # or: npm run dev
+php artisan serve               # http://localhost:8000
+php artisan queue:work          # in a second terminal (mail, exports later)
+```
+
+### Demo accounts (local development only)
+
+All demo passwords are `password`. They are **not** seeded when `APP_ENV=production`.
+
+| Role | Email |
+| ---- | ----- |
+| Super Admin | superadmin@smartcard.test |
+| Admin | admin@smartcard.test |
+| Designer | designer@smartcard.test |
+| Sales Manager | sales@smartcard.test |
+| Customer | customer@smartcard.test |
+
+## Roles and permissions
+
+Defined in [`config/smartcard.php`](config/smartcard.php) and synced to the
+database by `RolesAndPermissionsSeeder` (safe to re-run any time):
+
+```bash
+php artisan db:seed --class=RolesAndPermissionsSeeder
+```
+
+- **Super Admin** bypasses every check (`Gate::before`).
+- **Admin** manages everything except role permissions.
+- **Designer** works on themes and assigned designs.
+- **Sales Manager** manages customers, NFC cards, inventory and orders.
+- **Customer** sees only their own cards, profiles and analytics.
+
+Super Admins can change what each role may do under **Administration → Roles & permissions**.
+Self-registered accounts get the `customer` role and a linked customer record.
+
+## Configuration
+
+| Variable | Purpose |
+| -------- | ------- |
+| `APP_URL` | Base URL used for public profile and QR links |
+| `DB_*` | MySQL connection |
+| `QUEUE_CONNECTION` | `database` by default; use `redis` in production |
+| `MAIL_*` | Password reset and contact-form mail |
+| `SMARTCARD_CONTACT_EMAIL` | Recipient for landing-page enquiries |
+| `SEED_DEMO_DATA` | Force demo seeding in production (do not use on live sites) |
+
+## Testing
+
+Tests run against in-memory SQLite by default:
+
+```bash
+php artisan test
+```
+
+To run the same suite against MySQL:
+
+```bash
+DB_CONNECTION=mysql DB_DATABASE=smartcard_testing php artisan test
+```
+
+## Project structure
+
+```
+app/
+  Actions/Fortify/        registration, profile and password actions
+  Http/Controllers/       thin controllers (Admin/, Settings/, Api/V1/)
+  Http/Middleware/        EnsureUserIsActive
+  Http/Requests/          form request validation
+  Http/Resources/         API resources
+  Models/                 Eloquent models (public ULIDs via Concerns/HasPublicUlid)
+  Policies/               authorization policies
+  Services/               business logic (DashboardService, ActivityLogger, ...)
+  Support/Navigation.php  role-aware sidebar
+config/smartcard.php      roles, permissions, plans, card defaults
+resources/views/
+  components/             reusable Blade components and layouts
+  dashboard/ admin/ settings/ marketing/ auth/
+resources/js/modules/     frontend modules (charts, later: editor)
+docs/                     API and deployment documentation
+```
+
+## Security notes
+
+- Passwords hashed with bcrypt; stronger password rules in production.
+- CSRF protection on all web forms; Blade escaping for all output.
+- Login throttled (5/min per email+IP); API throttled (60/min); contact form throttled.
+- Deactivated users are signed out and their API tokens revoked.
+- Upload validation on MIME type, extension, size and dimensions.
+- Public resources use ULIDs; sequential ids never appear in URLs.
+- Audit log records sign-ins and administrative changes (passwords redacted).
+
+## Roadmap
+
+1. **Foundation**: auth, roles, dashboard, base UI, full database schema ✅
+2. Theme management (20+ editable themes, gallery, favourites)
+3. Visual card designer (canvas editor, layers, undo/redo, front/back)
+4. Customer management
+5. Digital business cards (public profiles, vCard, QR, NFC URLs)
+6. Export engine (PNG/SVG/PDF, 300 DPI, bleed, crop marks)
+7. Bulk generation (CSV/Excel import, ZIP, combined PDF)
+8. Inventory and analytics
+9. Testing hardening, performance, deployment guide
+
+See [docs/API.md](docs/API.md) for the REST API.
