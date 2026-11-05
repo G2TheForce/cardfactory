@@ -121,6 +121,7 @@ the scene JSON. Users with `themes.publish` can publish, unpublish and delete th
 | `IMPORT_MAX_ROWS` / `IMPORT_MAX_FILE_KB` | Bulk generator limits (default 1000 rows, 5 MB) |
 | `IMPORT_RETENTION_DAYS` | Unfinished bulk runs and their spreadsheets are deleted after this many days (default 7) |
 | `DB_QUEUE_RETRY_AFTER` | Seconds before a running job is retried; keep above the 3600 s bulk job timeout (default 3700) |
+| `APP_CURRENCY` | Currency for orders and revenue (default `USD`) |
 | `SEED_DEMO_DATA` | Force demo seeding in production (do not use on live sites) |
 
 ## Testing
@@ -305,6 +306,38 @@ row numbers and messages only, not the submitted values. Unfinished runs are del
 `php artisan imports:prune` (scheduled daily). CSV downloads neutralise spreadsheet
 formulas in user-supplied values.
 
+## NFC inventory, orders and analytics
+
+**NFC cards** (`nfc.manage`): every physical card has a printed ID (e.g. `SC-7K2M9QXA`),
+an optional hardware UID, a tag type (NTAG213/215/216, MIFARE, other), a product, a
+batch and a status: in stock, assigned, active, sold, defective, lost, replaced or
+retired. Add cards in batches of up to 500, either with generated IDs or one per UID
+pasted from a reader. "CSV for encoding" downloads each card's permanent tag URL
+(`/n/{card id}`) for your NFC writer app or USB encoder. On a card's page you can copy
+the URL, record the UID, link or move the card to a profile, unlink it, and see its
+assignment and order history. Marking a card defective, lost or retired unlinks it at
+once, so tapping it no longer opens the profile. Lost cards are swapped for new ones
+from the profile page ("Replace").
+
+**Inventory** (`inventory.manage`): products by SKU with price, cost and reorder level,
+and live stock per product (in stock, assigned, sold, out of use). Products at or below
+their reorder level are flagged here and on the dashboard.
+
+**Orders** (`orders.manage`): orders per customer with items, tax and currency; totals
+are worked out on the server and product names and prices are copied into the order.
+Marking an order paid, processing, shipped or completed records the payment date and
+counts it as revenue. Add the shipped cards by ID; cards from stock become "sold".
+Customer pages list their orders.
+
+**Analytics** (everyone, for the profiles they can see; customers see their own):
+profile views, unique visitors, QR scans, NFC taps, contacts saved and clicks on
+website, WhatsApp, email, phone, social networks and other links, with the change
+against the previous period. Traffic is shown daily, weekly or monthly for the last 7,
+30 or 90 days or 12 months, with devices, countries (when your CDN sends a country
+header), how people arrived (QR, NFC, direct), referring websites and the most visited
+profiles. "Daily CSV" exports the counts per day. No IP addresses, cookies or full user
+agents are stored.
+
 ## Security notes
 
 - Passwords hashed with bcrypt; stronger password rules in production.
@@ -326,7 +359,7 @@ formulas in user-supplied values.
 5. **Digital business cards**: public profiles, 5 profile themes, layouts, vCard, QR downloads, NFC assignment ✅
 6. **Export engine**: PNG/SVG/PDF, 150–600 DPI, bleed, crop marks, print boxes, CMYK, queued downloads ✅
 7. **Bulk generation**: CSV/Excel import, column mapping, validation report, batch customers/designs/profiles/QR, ZIP and combined PDF ✅
-8. Inventory and analytics
+8. **Inventory and analytics**: NFC stock and UIDs, products, orders, customer analytics dashboard, dashboard stock charts ✅
 9. Testing hardening, performance, deployment guide
 
 See [docs/API.md](docs/API.md) for the REST API.

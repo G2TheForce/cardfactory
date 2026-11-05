@@ -111,6 +111,21 @@
                 </div>
             </section>
 
+            @can('orders.manage')
+                @php $customerOrders = $customer->orders()->latest()->limit(10)->get(); @endphp
+                <section class="card overflow-hidden">
+                    <div class="card-header"><h2 class="card-title">Orders</h2><a href="{{ route('orders.create', ['customer' => $customer->ulid]) }}" class="text-xs font-semibold text-brand-600 hover:text-brand-700">New order</a></div>
+                    @forelse ($customerOrders as $o)
+                        <a href="{{ route('orders.show', $o) }}" class="flex items-center justify-between border-b border-gray-100 px-5 py-3 text-sm last:border-0 hover:bg-gray-50">
+                            <span class="font-mono font-medium text-gray-900">{{ $o->order_number }}</span>
+                            <span class="text-gray-500">{{ $o->quantity }} cards · {{ Illuminate\Support\Number::currency((float) $o->total, $o->currency) }} · @include('orders._status', ['status' => $o->status])</span>
+                        </a>
+                    @empty
+                        <p class="card-body text-sm text-gray-400">No orders yet.</p>
+                    @endforelse
+                </section>
+            @endcan
+
             @if (! empty($customer->introduction) || ! empty($customer->business['description']) || ! empty($customer->business['services']) || ! empty($customer->custom_fields))
                 <section class="card">
                     <div class="card-header"><h2 class="card-title">About</h2></div>

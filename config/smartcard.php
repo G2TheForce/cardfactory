@@ -67,6 +67,9 @@ return [
         'reserved_slugs' => ['admin', 'api', 'app', 'login', 'logout', 'register', 'dashboard', 'settings', 'support', 'help', 'www', 'mail', 'card', 'cards', 'profile', 'profiles', 'new', 'edit', 'create'],
     ],
 
+    // Currency for orders and revenue.
+    'currency' => env('APP_CURRENCY', 'USD'),
+
     'imports' => [
         // Rows per bulk generation file, and the largest upload in KB.
         'max_rows' => (int) env('IMPORT_MAX_ROWS', 1000),

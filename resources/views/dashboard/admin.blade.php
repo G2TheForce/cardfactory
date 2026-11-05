@@ -87,6 +87,38 @@
         @endif
     </div>
 
+    {{-- NFC stock --}}
+    @if ($nfcStock)
+        @php
+            $stockChart = ['type' => 'doughnut', 'labels' => ['In stock', 'Assigned & active', 'Sold', 'Defective', 'Lost / replaced', 'Retired'], 'datasets' => [['label' => 'Cards',
+                'data' => [$nfcStock['available'], $nfcStock['assigned'], $nfcStock['sold'], $nfcStock['defective'], $nfcStock['lost'], $nfcStock['retired']],
+                'colors' => ['#10b981', '#4f46e5', '#0ea5e9', '#ef4444', '#f59e0b', '#9ca3af']]]];
+        @endphp
+        <div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
+            <div class="card">
+                <div class="card-header"><h2 class="card-title">NFC cards</h2>@if (Route::has('nfc.index') && auth()->user()->can('nfc.manage'))<a href="{{ route('nfc.index') }}" class="text-xs font-semibold text-brand-600 hover:text-brand-700">Manage</a>@endif</div>
+                <div class="card-body">
+                    @if ($nfcStock['total'] > 0)
+                        <div class="h-56"><canvas data-chart='@json($stockChart)' role="img" aria-label="NFC cards by status"></canvas></div>
+                    @else
+                        <x-empty-state icon="nfc" title="No NFC cards in stock" />
+                    @endif
+                </div>
+            </div>
+            <div class="card overflow-hidden xl:col-span-2">
+                <div class="card-header"><h2 class="card-title">Stock alerts</h2>@if (Route::has('inventory.index') && auth()->user()->can('inventory.manage'))<a href="{{ route('inventory.index') }}" class="text-xs font-semibold text-brand-600 hover:text-brand-700">Inventory</a>@endif</div>
+                @forelse ($lowStock as $product)
+                    <div class="flex items-center justify-between border-b border-gray-100 px-5 py-3 text-sm last:border-0">
+                        <span><span class="font-mono text-xs text-gray-500">{{ $product->sku }}</span> <span class="font-medium text-gray-900">{{ $product->name }}</span></span>
+                        <span class="badge-amber">{{ $product->stock['available'] }} left · reorder at {{ $product->reorder_level }}</span>
+                    </div>
+                @empty
+                    <div class="card-body text-sm text-gray-500">{{ $nfcStock['available'] }} cards in stock. Every product is above its reorder level.</div>
+                @endforelse
+            </div>
+        </div>
+    @endif
+
     {{-- Recent activity --}}
     <div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
         <div class="card overflow-hidden">

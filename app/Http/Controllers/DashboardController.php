@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\DashboardService;
+use App\Services\InventoryService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -10,11 +11,13 @@ class DashboardController extends Controller
 {
     public function __construct(private readonly DashboardService $dashboard) {}
 
-    public function __invoke(Request $request): View
+    public function __invoke(Request $request, InventoryService $inventory): View
     {
         $user = $request->user();
 
         if ($user->can('dashboard.view')) {
+            $seesStock = $user->can('nfc.manage') || $user->can('inventory.manage');
+
             return view('dashboard.admin', [
                 'stats' => $this->dashboard->adminStats(),
                 'recentCustomers' => $this->dashboard->recentCustomers(),
@@ -24,6 +27,8 @@ class DashboardController extends Controller
                 'revenue' => $this->dashboard->monthlyRevenue(),
                 'engagement' => $this->dashboard->engagementTrend(),
                 'canSeeRevenue' => $user->can('revenue.view'),
+                'nfcStock' => $seesStock ? $inventory->stockSummary() : null,
+                'lowStock' => $user->can('inventory.manage') ? $inventory->productsWithStock()->where('low_stock', true)->values() : collect(),
             ]);
         }
 

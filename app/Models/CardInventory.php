@@ -26,6 +26,12 @@ class CardInventory extends Model
         ];
     }
 
+    /** Products are addressed by SKU in URLs, not by numeric id. */
+    public function getRouteKeyName(): string
+    {
+        return 'sku';
+    }
+
     public function nfcCards(): HasMany
     {
         return $this->hasMany(NfcCard::class);
