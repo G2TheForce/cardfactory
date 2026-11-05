@@ -9,6 +9,7 @@
     <meta name="description" content="Design print-ready NFC smart business cards, QR codes and mobile digital profiles in one place.">
     <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @stack('head')
 </head>
 <body class="bg-white" x-data="{ menu: false }">
 <header class="sticky top-0 z-40 border-b border-gray-100 bg-white/80 backdrop-blur">

@@ -16,6 +16,9 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
+        // Tests don't need built frontend assets (CI runs without npm run build).
+        $this->withoutVite();
+
         if ($this->seedRoles && in_array(RefreshDatabase::class, class_uses_recursive($this), true)) {
             $this->seed(RolesAndPermissionsSeeder::class);
         }
