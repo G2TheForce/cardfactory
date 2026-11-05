@@ -23,6 +23,7 @@ class Navigation
             ]],
             ['label' => 'Design', 'items' => [
                 ['label' => 'Card designs', 'route' => 'designs.index', 'icon' => 'pen-tool', 'active' => 'designs.*'],
+                ['label' => 'Exports', 'route' => 'exports.index', 'icon' => 'download', 'active' => 'exports.*'],
                 ['label' => 'Themes', 'route' => 'themes.index', 'icon' => 'palette', 'active' => 'themes.*'],
                 ['label' => 'Brand kits', 'route' => 'brand-kits.index', 'icon' => 'swatch-book', 'active' => 'brand-kits.*'],
             ]],

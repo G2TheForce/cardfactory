@@ -67,6 +67,21 @@ return [
         'reserved_slugs' => ['admin', 'api', 'app', 'login', 'logout', 'register', 'dashboard', 'settings', 'support', 'help', 'www', 'mail', 'card', 'cards', 'profile', 'profiles', 'new', 'edit', 'create'],
     ],
 
+    'export' => [
+        // Headless Chrome/Chromium renders PNG and PDF. Leave empty to auto-detect.
+        'chrome_binary' => env('CHROME_PATH'),
+        // Needed when the queue worker runs as root (e.g. in containers).
+        'chrome_no_sandbox' => (bool) env('CHROME_NO_SANDBOX', true),
+        // Ghostscript converts PDFs to CMYK when installed. Leave empty to auto-detect "gs".
+        'ghostscript_binary' => env('GHOSTSCRIPT_PATH'),
+        'timeout' => (int) env('EXPORT_TIMEOUT', 120),
+        // Virtual time Chrome gives the (self-contained) page to lay out fonts and images.
+        'font_wait_ms' => 3000,
+        'disk' => env('EXPORT_DISK', 'local'),
+        // Finished export files are deleted after this many days (exports:prune).
+        'retention_days' => (int) env('EXPORT_RETENTION_DAYS', 7),
+    ],
+
     'analytics' => [
         // Request header holding the visitor's country code, set by a trusted proxy/CDN
         // (Cloudflare sends CF-IPCountry). Leave empty to skip country analytics.

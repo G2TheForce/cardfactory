@@ -56,6 +56,7 @@
                     </div>
                     <div class="mt-3 flex items-center gap-2">
                         <a href="{{ route('designs.edit', $design) }}" class="btn-secondary btn-sm flex-1"><x-lucide-pen-tool class="h-3.5 w-3.5" /> Open editor</a>
+                        <a href="{{ route('designs.export', $design) }}" class="btn-ghost btn-sm" title="Export" aria-label="Export {{ $design->name }}"><x-lucide-download class="h-4 w-4" /></a>
                         <form method="POST" action="{{ route('designs.duplicate', $design) }}">
                             @csrf
                             <button class="btn-ghost btn-sm" title="Duplicate" aria-label="Duplicate {{ $design->name }}"><x-lucide-copy class="h-4 w-4" /></button>

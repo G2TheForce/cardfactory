@@ -22,6 +22,7 @@ professional **NFC smart visiting cards**, their **QR codes** and the
 - Composer 2
 - Node.js 20+ and npm
 - MySQL 8+ (or MariaDB 10.11+)
+- For PNG/PDF exports: Chrome or Chromium (headless). Optional: Ghostscript for CMYK PDFs
 
 ## Installation (local development)
 
@@ -49,7 +50,7 @@ php artisan migrate --seed      # schema, roles, 20 themes, demo data (non-produ
 php artisan storage:link        # public uploads (avatars, logos, editor images and fonts)
 npm run build                   # or: npm run dev
 php artisan serve               # http://localhost:8000
-php artisan queue:work          # in a second terminal (mail, exports later)
+php artisan queue:work --queue=exports,default   # in a second terminal (exports, mail)
 ```
 
 ### Demo accounts (local development only)
@@ -112,6 +113,11 @@ the scene JSON. Users with `themes.publish` can publish, unpublish and delete th
 | `MAIL_*` | Password reset and contact-form mail |
 | `SMARTCARD_CONTACT_EMAIL` | Recipient for landing-page enquiries |
 | `ANALYTICS_COUNTRY_HEADER` | Header with the visitor's country set by your CDN (default `CF-IPCountry`; empty disables country stats) |
+| `CHROME_PATH` | Path to Chrome/Chromium for PNG and PDF exports (auto-detected if empty) |
+| `CHROME_NO_SANDBOX` | Run Chrome with `--no-sandbox` (default `true`; needed in most containers and as root) |
+| `GHOSTSCRIPT_PATH` | Path to `gs` for CMYK PDFs (auto-detected if empty) |
+| `EXPORT_TIMEOUT` | Seconds before a Chrome render is stopped (default 120) |
+| `EXPORT_DISK` / `EXPORT_RETENTION_DAYS` | Where export files are stored (private `local` disk) and how long they're kept (default 7 days) |
 | `SEED_DEMO_DATA` | Force demo seeding in production (do not use on live sites) |
 
 ## Testing
@@ -230,6 +236,43 @@ the customer marked "show on profile".
   page (404) for the public page, QR and NFC links. Profiles are hidden from search
   engines unless the owner opts in.
 
+## Exports
+
+Open a design and choose **Export** (editor top bar or the designs list). Exports run on
+the `exports` queue, so a queue worker must be running:
+
+```bash
+php artisan queue:work --queue=exports,default
+```
+
+| Format | What you get |
+| ------ | ------------ |
+| **PDF** | Vector PDF, one page per side, with exact `MediaBox`, `BleedBox` and `TrimBox`; fonts embedded. Optional crop marks (8 mm margin, marks 1 mm outside the bleed, job label) and CMYK conversion. |
+| **PNG** | Rendered from the vector source at 150, 300 or 600 DPI (never an upscaled screenshot of the editor), cropped to the exact pixel size with the DPI written into the file. Optional transparent background. |
+| **SVG** | Self-contained vector file with images and fonts embedded. |
+
+- Sizes are physical: an 85.6 × 54 mm card with 3 mm bleed at 300 DPI is 1082 × 709 px.
+- Bleed is 0–5 mm. Guides (bleed and safe area) and rounded corners are for proofs only.
+- Front and back as PNG or SVG come as a ZIP; PDFs hold both sides as pages.
+- Files are private: only the person who ran the export (or users with `exports.manage`)
+  can download them. `php artisan exports:prune` (scheduled daily) deletes files after
+  `EXPORT_RETENTION_DAYS` and marks exports stuck for over a day as failed.
+
+**How rendering works.** The card is rendered to millimetre-based SVG by
+`CardRenderingService`, wrapped in a self-contained HTML page (images as data URIs,
+Google Fonts fetched by the server, cached in `storage/app/private/font-cache` and
+embedded) and printed by headless Chrome with networking disabled, so user content can't
+make the server fetch URLs. `PdfBoxes` then writes the print boxes.
+
+**Installing the tools.** Debian/Ubuntu: `apt install chromium ghostscript` (or install
+Google Chrome). Without Chrome, PNG and PDF are disabled in the UI with an explanation and
+SVG still works. Without Ghostscript the CMYK option is disabled.
+
+**CMYK.** When Ghostscript is installed, the CMYK option converts the PDF with
+`-sColorConversionStrategy=CMYK` and keeps the print boxes. It uses Ghostscript's default
+CMYK profile, not a press-specific ICC profile, so ask your printer for a proof if colour
+matching is critical. Most digital card printers accept the RGB PDF and convert themselves.
+
 ## Security notes
 
 - Passwords hashed with bcrypt; stronger password rules in production.
@@ -249,7 +292,7 @@ the customer marked "show on profile".
 3. **Visual card designer**: canvas editor, uploads, layers, undo/redo, front/back, save/load ✅
 4. **Customer management**: list, search, forms, uploads, visibility, logins, API ✅
 5. **Digital business cards**: public profiles, 5 profile themes, layouts, vCard, QR downloads, NFC assignment ✅
-6. Export engine (PNG/SVG/PDF, 300 DPI, bleed, crop marks)
+6. **Export engine**: PNG/SVG/PDF, 150–600 DPI, bleed, crop marks, print boxes, CMYK, queued downloads ✅
 7. Bulk generation (CSV/Excel import, ZIP, combined PDF)
 8. Inventory and analytics
 9. Testing hardening, performance, deployment guide

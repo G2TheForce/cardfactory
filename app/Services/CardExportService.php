@@ -1,0 +1,494 @@
+<?php
+
+namespace App\Services;
+
+use App\Jobs\ProcessCardExport;
+use App\Models\CardDesign;
+use App\Models\CardExport;
+use App\Models\User;
+use App\Services\Export\ChromeRenderer;
+use App\Services\Export\PdfBoxes;
+use App\Support\Fonts;
+use App\Support\Scene\Scene;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use RuntimeException;
+use Symfony\Component\Process\Process;
+use ZipArchive;
+
+/**
+ * Print-ready exports of card designs.
+ *
+ * Every format starts from the same millimetre-based SVG that the editor
+ * shows (CardRenderingService), so the export matches the design exactly:
+ *  - SVG: self-contained vector files (images and custom fonts embedded).
+ *  - PDF: vector PDF via headless Chrome, one page per side, with exact
+ *    MediaBox/BleedBox/TrimBox, optional crop marks and optional CMYK
+ *    conversion through Ghostscript.
+ *  - PNG: rendered at 150/300/600 DPI from the vector source (never an
+ *    upscaled screenshot), with the DPI written into the file.
+ * Exports run on the queue and are stored privately for the requester.
+ */
+class CardExportService
+{
+    public const FORMATS = ['pdf' => 'Print-ready PDF', 'png' => 'PNG image', 'svg' => 'SVG vector'];
+
+    public const SIDES = ['both' => 'Front and back', 'front' => 'Front only', 'back' => 'Back only'];
+
+    public const DPIS = [150, 300, 600];
+
+    public const MAX_BLEED = 5;
+
+    /** Crop mark geometry in mm: gap outside the bleed, mark length, and outer margin. */
+    private const MARK_GAP = 1.0;
+
+    private const MARK_LENGTH = 5.0;
+
+    private const MARK_MARGIN = 8.0;
+
+    private const MM_TO_PT = 72 / 25.4;
+
+    public function __construct(
+        private readonly CardDesignService $designs,
+        private readonly CardRenderingService $renderer,
+        private readonly AssetService $assets,
+        private readonly ChromeRenderer $chrome,
+        private readonly ActivityLogger $logger,
+    ) {}
+
+    /** Queue an export. Options are already validated by the controller. */
+    public function request(CardDesign $design, User $user, array $options): CardExport
+    {
+        $options = $this->normalise($options);
+        $export = CardExport::create([
+            'user_id' => $user->id,
+            'card_design_id' => $design->id,
+            'format' => $options['format'],
+            'sides' => $options['sides'],
+            'options' => $options,
+            'status' => 'queued',
+            'disk' => config('smartcard.export.disk'),
+        ]);
+        $this->logger->log('design.export_requested', $design, 'Requested a '.strtoupper($options['format']).' export of "'.$design->name.'"', ['export' => $export->ulid], $user->id);
+
+        ProcessCardExport::dispatch($export);
+
+        return $export;
+    }
+
+    /** Defaults and limits for export options. */
+    public function normalise(array $o): array
+    {
+        $format = array_key_exists($o['format'] ?? '', self::FORMATS) ? $o['format'] : 'pdf';
+
+        return [
+            'format' => $format,
+            'sides' => array_key_exists($o['sides'] ?? '', self::SIDES) ? $o['sides'] : 'both',
+            'bleed_mm' => round(max(0, min(self::MAX_BLEED, (float) ($o['bleed_mm'] ?? 3))), 2),
+            'crop_marks' => $format !== 'svg' && filter_var($o['crop_marks'] ?? false, FILTER_VALIDATE_BOOL),
+            'dpi' => in_array((int) ($o['dpi'] ?? 300), self::DPIS, true) ? (int) ($o['dpi'] ?? 300) : 300,
+            'transparent' => $format !== 'pdf' && filter_var($o['transparent'] ?? false, FILTER_VALIDATE_BOOL),
+            'round_corners' => filter_var($o['round_corners'] ?? false, FILTER_VALIDATE_BOOL),
+            'corner_radius_mm' => isset($o['corner_radius_mm']) && $o['corner_radius_mm'] !== '' ? round(max(0, min(10, (float) $o['corner_radius_mm'])), 2) : null,
+            'guides' => filter_var($o['guides'] ?? false, FILTER_VALIDATE_BOOL),
+            'cmyk' => $format === 'pdf' && filter_var($o['cmyk'] ?? false, FILTER_VALIDATE_BOOL),
+        ];
+    }
+
+    /** Runs inside the queue job. */
+    public function process(CardExport $export): void
+    {
+        $export->update(['status' => 'processing', 'error' => null]);
+        $design = $export->cardDesign()->with('customer.company')->first();
+
+        try {
+            if (! $design) {
+                throw new RuntimeException('The design was deleted before the export ran.');
+            }
+            $o = $this->normalise($export->options ?? []);
+            $files = $this->build($design, $o);
+            $name = $this->baseName($design);
+
+            if (count($files) === 1) {
+                [$ext, $bytes] = [array_key_first($files), reset($files)];
+                $path = 'exports/'.$export->ulid.'/'.$name.'.'.pathinfo($ext, PATHINFO_EXTENSION);
+                Storage::disk($export->disk)->put($path, $bytes);
+            } else {
+                $path = 'exports/'.$export->ulid.'/'.$name.'.zip';
+                Storage::disk($export->disk)->put($path, $this->zip($files, $name));
+            }
+
+            $export->update([
+                'status' => 'completed',
+                'file_path' => $path,
+                'file_size' => Storage::disk($export->disk)->size($path),
+                'completed_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            report($e);
+            $export->update(['status' => 'failed', 'error' => Str::limit($e->getMessage(), 1000)]);
+        }
+    }
+
+    /**
+     * Produce the export files in memory.
+     *
+     * @return array<string, string> file name suffix (e.g. "front.png") => bytes
+     */
+    public function build(CardDesign $design, array $o): array
+    {
+        $sides = $o['sides'] === 'both' ? ['front', 'back'] : [$o['sides']];
+        if ($o['format'] !== 'svg' && ! $this->chrome->available()) {
+            throw new RuntimeException('PNG and PDF exports need headless Chrome on the server. Install chromium or set CHROME_PATH.');
+        }
+
+        $pages = [];
+        foreach ($sides as $side) {
+            $pages[$side] = $this->page($design, $side, $o);
+        }
+        $css = $this->fontCss($design);
+
+        return match ($o['format']) {
+            'svg' => collect($pages)->mapWithKeys(fn ($p, $side) => [$side.'.svg' => $this->standaloneSvg($p['svg'], $css)])->all(),
+            'png' => collect($pages)->mapWithKeys(fn ($p, $side) => [$side.'.png' => $this->png($p, $css, $o)])->all(),
+            'pdf' => ['card.pdf' => $this->pdf($pages, $css, $o, $design)],
+        };
+    }
+
+    /**
+     * One side as a print page: the card SVG (with bleed) placed on a page
+     * that also holds crop marks when requested. All sizes in mm.
+     *
+     * @return array{svg: string, width: float, height: float, offset: float, trim_w: float, trim_h: float, bleed: float}
+     */
+    public function page(CardDesign $design, string $side, array $o): array
+    {
+        $w = (float) $design->width_mm;
+        $h = (float) $design->height_mm;
+        $b = $o['bleed_mm'];
+        $radius = $o['corner_radius_mm'] ?? (float) $design->corner_radius_mm;
+
+        $card = $this->renderer->render($design->{$side} ?? Scene::emptySide(), $this->designs->renderOptions($design, [
+            'bleed_mm' => $b,
+            'corner_radius_mm' => $radius,
+            'clip_corners' => $o['round_corners'] && $radius > 0,
+            'transparent' => $o['transparent'],
+            'show_guides' => $o['guides'],
+            'title' => $design->name.' ('.$side.')',
+        ]));
+        $card = $this->inlineImages($card);
+
+        $m = $o['crop_marks'] ? self::MARK_MARGIN : 0.0;
+        $pw = $w + 2 * $b + 2 * $m;
+        $ph = $h + 2 * $b + 2 * $m;
+
+        // Nest the card SVG at (m, m) in a page-sized SVG.
+        $inner = preg_replace('/^<svg([^>]*?) width="[^"]+" height="[^"]+"/', '<svg$1 x="'.$this->n($m).'" y="'.$this->n($m).'" width="'.$this->n($w + 2 * $b).'" height="'.$this->n($h + 2 * $b).'"', $card, 1);
+        $marks = $o['crop_marks'] ? $this->cropMarks($w, $h, $b, $m, $design->name.' · '.$side.' · '.$this->n($w).' × '.$this->n($h).' mm · bleed '.$this->n($b).' mm') : '';
+
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="'.$this->n($pw).'mm" height="'.$this->n($ph).'mm" viewBox="0 0 '.$this->n($pw).' '.$this->n($ph).'">'
+            .$inner.$marks.'</svg>';
+
+        return ['svg' => $svg, 'width' => $pw, 'height' => $ph, 'offset' => $m, 'trim_w' => $w, 'trim_h' => $h, 'bleed' => $b];
+    }
+
+    public function chromeAvailable(): bool
+    {
+        return $this->chrome->available();
+    }
+
+    public function ghostscript(): ?string
+    {
+        $bin = config('smartcard.export.ghostscript_binary') ?: 'gs';
+        if (str_contains($bin, '/')) {
+            return is_executable($bin) ? $bin : null;
+        }
+        $path = trim((string) @shell_exec('command -v '.escapeshellarg($bin).' 2>/dev/null'));
+
+        return $path !== '' ? $path : null;
+    }
+
+    public function downloadName(CardExport $export): string
+    {
+        return basename((string) $export->file_path);
+    }
+
+    // ------------------------------------------------------------------ formats
+
+    private function pdf(array $pages, string $css, array $o, CardDesign $design): string
+    {
+        $first = reset($pages);
+        $html = $this->html($css, '@page{size:'.$this->n($first['width']).'mm '.$this->n($first['height']).'mm;margin:0}'
+            .'.page{width:'.$this->n($first['width']).'mm;height:'.$this->n($first['height']).'mm;overflow:hidden;break-after:page}.page:last-child{break-after:auto}',
+            collect($pages)->map(fn ($p) => '<div class="page">'.$this->sized($p['svg'], $p['width'], $p['height']).'</div>')->implode(''));
+
+        $tmp = $this->tmp('pdf');
+        try {
+            $this->chrome->pdf($html, $tmp);
+            $pdf = (string) file_get_contents($tmp);
+        } finally {
+            @unlink($tmp);
+        }
+
+        $pdf = PdfBoxes::apply($pdf, array_values(array_map(function ($p) {
+            $pt = fn ($mm) => $mm * self::MM_TO_PT;
+            $pw = $pt($p['width']);
+            $ph = $pt($p['height']);
+            $bx = $pt($p['offset']);
+            $tx = $pt($p['offset'] + $p['bleed']);
+
+            return [
+                'media' => [$pw, $ph],
+                'bleed' => [$bx, $bx, $pw - $bx, $ph - $bx],
+                'trim' => [$tx, $tx, $pw - $tx, $ph - $tx],
+            ];
+        }, $pages)));
+
+        return $o['cmyk'] ? $this->cmyk($pdf) : $pdf;
+    }
+
+    private function png(array $page, string $css, array $o): string
+    {
+        $scale = $o['dpi'] / 96;
+        $targetW = (int) round($page['width'] / 25.4 * $o['dpi']);
+        $targetH = (int) round($page['height'] / 25.4 * $o['dpi']);
+        $cssW = (int) ceil($targetW / $scale);
+        $cssH = (int) ceil($targetH / $scale);
+
+        $html = $this->html($css, 'html,body{width:'.$cssW.'px;height:'.$cssH.'px;overflow:hidden}'
+            .($o['transparent'] ? 'html,body{background:transparent}' : 'html,body{background:#fff}'),
+            $this->sized($page['svg'], $page['width'], $page['height']));
+
+        $tmp = $this->tmp('png');
+        try {
+            $this->chrome->png($html, $cssW, $cssH, $scale, $tmp, $o['transparent']);
+            $img = imagecreatefrompng($tmp);
+        } finally {
+            @unlink($tmp);
+        }
+        if (! $img) {
+            throw new RuntimeException('Could not read the rendered PNG.');
+        }
+
+        // Crop to the exact pixel size and record the DPI in the file.
+        $out = imagecreatetruecolor($targetW, $targetH);
+        imagealphablending($out, false);
+        imagesavealpha($out, true);
+        imagefill($out, 0, 0, imagecolorallocatealpha($out, 255, 255, 255, $o['transparent'] ? 127 : 0));
+        imagecopy($out, $img, 0, 0, 0, 0, min($targetW, imagesx($img)), min($targetH, imagesy($img)));
+        imageresolution($out, $o['dpi'], $o['dpi']);
+        ob_start();
+        imagepng($out, null, 6);
+        imagedestroy($img);
+        imagedestroy($out);
+
+        return (string) ob_get_clean();
+    }
+
+    private function cmyk(string $pdf): string
+    {
+        $gs = $this->ghostscript() ?? throw new RuntimeException('CMYK conversion needs Ghostscript on the server. Install ghostscript or untick CMYK.');
+        $in = $this->tmp('pdf');
+        $out = $this->tmp('pdf');
+        file_put_contents($in, $pdf);
+        try {
+            $process = new Process([$gs, '-dSAFER', '-dBATCH', '-dNOPAUSE', '-dQUIET', '-sDEVICE=pdfwrite',
+                '-dCompatibilityLevel=1.6', '-sColorConversionStrategy=CMYK', '-dProcessColorModel=/DeviceCMYK',
+                '-dAutoRotatePages=/None', '-dPDFSETTINGS=/prepress', '-sOutputFile='.$out, $in]);
+            $process->setTimeout((int) config('smartcard.export.timeout', 120));
+            $process->run();
+            if (! $process->isSuccessful() || ! is_file($out) || filesize($out) === 0) {
+                throw new RuntimeException('CMYK conversion failed: '.Str::limit(trim($process->getErrorOutput() ?: $process->getOutput()), 300));
+            }
+
+            return (string) file_get_contents($out);
+        } finally {
+            @unlink($in);
+            @unlink($out);
+        }
+    }
+
+    private function standaloneSvg(string $svg, string $css): string
+    {
+        $style = $css !== '' ? '<style>'.$css.'</style>' : '';
+
+        return '<?xml version="1.0" encoding="UTF-8"?>'."\n".preg_replace('/^(<svg[^>]*>)/', '$1'.$style, $svg, 1);
+    }
+
+    // ------------------------------------------------------------------ helpers
+
+    /** Hairline crop marks just outside the bleed, plus a small job label. */
+    private function cropMarks(float $w, float $h, float $b, float $m, string $label): string
+    {
+        $stroke = 0.1; // ~0.3 pt
+        $x1 = $m + $b;
+        $y1 = $m + $b;
+        $x2 = $x1 + $w;
+        $y2 = $y1 + $h;
+        $near = $b + self::MARK_GAP;
+        $far = $near + self::MARK_LENGTH;
+        $lines = [
+            // vertical marks above and below each trim edge
+            [$x1, $y1 - $far, $x1, $y1 - $near], [$x2, $y1 - $far, $x2, $y1 - $near],
+            [$x1, $y2 + $near, $x1, $y2 + $far], [$x2, $y2 + $near, $x2, $y2 + $far],
+            // horizontal marks left and right of each trim edge
+            [$x1 - $far, $y1, $x1 - $near, $y1], [$x1 - $far, $y2, $x1 - $near, $y2],
+            [$x2 + $near, $y1, $x2 + $far, $y1], [$x2 + $near, $y2, $x2 + $far, $y2],
+        ];
+        $out = '<g stroke="#000" stroke-width="'.$stroke.'" fill="none" data-crop-marks="1">';
+        foreach ($lines as [$a, $c, $d, $e]) {
+            $out .= '<line x1="'.$this->n($a).'" y1="'.$this->n($c).'" x2="'.$this->n($d).'" y2="'.$this->n($e).'"/>';
+        }
+        $out .= '</g>';
+
+        return $out.'<text x="'.$this->n($x1).'" y="'.$this->n($m + 2 * $b + $h + $m - 1.5).'" font-family="Helvetica, Arial, sans-serif" font-size="1.6" fill="#000">'.e(Str::limit($label, 90)).'</text>';
+    }
+
+    /** Replace local image URLs with data URIs so files render anywhere, offline. */
+    private function inlineImages(string $svg): string
+    {
+        return preg_replace_callback('/(href|xlink:href)="([^"]+)"/', function ($m) {
+            $data = $this->dataUri(html_entity_decode($m[2]));
+
+            return $data ? $m[1].'="'.$data.'"' : $m[0];
+        }, $svg);
+    }
+
+    private function fontCss(CardDesign $design): string
+    {
+        $families = $this->renderer->fontsUsed($design->front ?? [], $design->back ?? []);
+        $css = '';
+        if ($url = Fonts::googleUrl($families)) {
+            $css .= $this->googleFontCss($url);
+        }
+        $custom = $this->assets->fontFaceCssFor($families, [$design->user_id, $design->designer_id, $design->customer?->user_id]);
+
+        return $css.preg_replace_callback("/url\('([^']+)'\)/", fn ($m) => "url('".($this->dataUri(html_entity_decode($m[1])) ?? $m[1])."')", $custom);
+    }
+
+    /**
+     * Google Fonts CSS with every font file embedded, fetched by the server
+     * and cached, so Chrome renders offline (it runs with networking off).
+     * Missing fonts fall back to similar system fonts rather than failing.
+     */
+    private function googleFontCss(string $url): string
+    {
+        $fetch = function (string $u): ?string {
+            $key = 'font-cache/'.sha1($u);
+            $disk = Storage::disk('local');
+            if ($disk->exists($key)) {
+                return $disk->get($key);
+            }
+            try {
+                $response = Http::timeout(15)->withHeaders([
+                    // A current browser user agent gets WOFF2 files.
+                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36',
+                ])->get($u);
+            } catch (\Throwable $e) {
+                report($e);
+
+                return null;
+            }
+            if (! $response->successful()) {
+                return null;
+            }
+            $disk->put($key, $response->body());
+
+            return $response->body();
+        };
+
+        $css = $fetch($url);
+        if ($css === null) {
+            return '';
+        }
+
+        return preg_replace_callback('/url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/', function ($m) use ($fetch) {
+            $bytes = $fetch($m[1]);
+
+            return $bytes === null ? 'url(about:blank)' : 'url(data:font/'.(str_ends_with($m[1], '.woff2') ? 'woff2' : 'ttf').';base64,'.base64_encode($bytes).')';
+        }, $css);
+    }
+
+    /** data: URI for a file under /storage (public disk) or /public, else null. */
+    private function dataUri(string $url): ?string
+    {
+        if (str_starts_with($url, 'data:')) {
+            return null;
+        }
+        $path = parse_url($url, PHP_URL_PATH);
+        $host = parse_url($url, PHP_URL_HOST);
+        if (! $path || ($host && $host !== parse_url((string) config('app.url'), PHP_URL_HOST) && ! in_array($host, ['localhost', '127.0.0.1'], true))) {
+            return null;
+        }
+        $path = rawurldecode($path);
+        if (str_contains($path, '..')) {
+            return null;
+        }
+
+        $bytes = null;
+        if (str_starts_with($path, '/storage/') && Storage::disk('public')->exists($rel = substr($path, 9))) {
+            $bytes = Storage::disk('public')->get($rel);
+        } elseif (is_file($file = public_path(ltrim($path, '/'))) && str_starts_with(realpath($file), realpath(public_path()))) {
+            $bytes = file_get_contents($file);
+        }
+        if ($bytes === null || $bytes === false) {
+            return null;
+        }
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($bytes) ?: 'application/octet-stream';
+        if (str_starts_with($mime, 'font/') || in_array($mime, ['application/font-sfnt', 'application/vnd.ms-opentype', 'application/octet-stream'], true)) {
+            $mime = ['woff2' => 'font/woff2', 'woff' => 'font/woff', 'otf' => 'font/otf', 'ttf' => 'font/ttf'][strtolower(pathinfo($path, PATHINFO_EXTENSION))] ?? $mime;
+        }
+
+        return 'data:'.$mime.';base64,'.base64_encode($bytes);
+    }
+
+    private function html(string $fontCss, string $css, string $body): string
+    {
+        return '<!DOCTYPE html><html><head><meta charset="utf-8"><style>'.$fontCss
+            .'html,body{margin:0;padding:0}svg{display:block}'.$css.'</style></head><body>'.$body
+            .'</body></html>';
+    }
+
+    /** Make the page SVG fill its box exactly (CSS mm units). */
+    private function sized(string $svg, float $w, float $h): string
+    {
+        return preg_replace('/^<svg/', '<svg style="width:'.$this->n($w).'mm;height:'.$this->n($h).'mm"', $svg, 1);
+    }
+
+    /** @param  array<string, string>  $files */
+    private function zip(array $files, string $name): string
+    {
+        $tmp = $this->tmp('zip');
+        $zip = new ZipArchive;
+        if ($zip->open($tmp, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            throw new RuntimeException('Could not create the ZIP file.');
+        }
+        foreach ($files as $suffix => $bytes) {
+            $zip->addFromString($name.'-'.$suffix, $bytes);
+        }
+        $zip->close();
+        $bytes = (string) file_get_contents($tmp);
+        @unlink($tmp);
+
+        return $bytes;
+    }
+
+    private function baseName(CardDesign $design): string
+    {
+        return Str::limit(Str::slug($design->name), 60, '') ?: 'card';
+    }
+
+    private function tmp(string $ext): string
+    {
+        File::ensureDirectoryExists(storage_path('app/private/tmp'));
+
+        return storage_path('app/private/tmp/export-'.Str::random(16).'.'.$ext);
+    }
+
+    private function n(float|int $v): string
+    {
+        return rtrim(rtrim(number_format((float) $v, 3, '.', ''), '0'), '.') ?: '0';
+    }
+}
