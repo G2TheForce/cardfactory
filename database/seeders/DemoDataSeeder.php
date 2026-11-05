@@ -10,13 +10,14 @@ use App\Models\CardOrder;
 use App\Models\CardTheme;
 use App\Models\Company;
 use App\Models\Customer;
-use App\Models\DigitalProfile;
 use App\Models\NfcAssignment;
 use App\Models\NfcCard;
-use App\Models\QrCode;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\BrandKitService;
 use App\Services\CardDesignService;
+use App\Services\DigitalProfileService;
+use App\Support\ProfileThemes;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -68,6 +69,8 @@ class DemoDataSeeder extends Seeder
         });
 
         $themes = CardTheme::where('status', CardTheme::STATUS_PUBLISHED)->get();
+        $profiles = app(DigitalProfileService::class);
+        $profileThemes = array_keys(ProfileThemes::THEMES);
 
         foreach ($customers as $i => $customer) {
             $created = Carbon::parse($customer->created_at);
@@ -99,17 +102,19 @@ class DemoDataSeeder extends Seeder
                 continue; // some customers have no digital profile yet
             }
 
-            $profile = DigitalProfile::factory()->create([
-                'customer_id' => $customer->id,
-                'slug' => Str::slug($customer->full_name).'-'.Str::lower(Str::random(4)),
-                'is_active' => $i % 9 !== 0,
-                'created_at' => $created,
-            ]);
-            $qr = QrCode::create([
-                'digital_profile_id' => $profile->id,
-                'code' => Str::lower(Str::random(10)),
-                'target_url' => url('/card/'.$profile->slug),
-            ]);
+            $profile = $profiles->create($customer, [
+                'slug' => $customer->user_id ? 'casey-customer' : null,
+                'profile_theme' => $profileThemes[$i % count($profileThemes)],
+            ], $admin);
+            $profile->forceFill(['is_active' => $i % 9 !== 0, 'created_at' => $created])->save();
+            if ($customer->user_id) {
+                $profile->update(['settings' => array_merge($profile->settings, [
+                    'headline' => 'Let\'s build something people remember.',
+                    'ctas' => [['label' => 'Book a meeting', 'url' => 'https://example.com/book', 'style' => 'solid']],
+                    'map_embed' => true,
+                ])]);
+            }
+            $qr = $profiles->qrCode($profile);
 
             $nfc = null;
             if ($i % 2 === 0 && $card = $nfcCards->firstWhere('status', 'in_stock')) {
@@ -120,7 +125,7 @@ class DemoDataSeeder extends Seeder
                     'digital_profile_id' => $profile->id,
                     'assigned_by' => $sales->id,
                     'status' => 'active',
-                    'profile_url' => $qr->target_url,
+                    'profile_url' => route('nfc.tap', $card->card_identifier),
                     'assigned_at' => $created,
                     'activated_at' => $created,
                 ]);
@@ -193,6 +198,25 @@ class DemoDataSeeder extends Seeder
                 'provider_reference' => 'demo-'.$company->ulid,
                 'starts_at' => $this->randomDate(300),
             ]);
+        }
+
+        // Brand kits, each with a template design.
+        $kits = app(BrandKitService::class);
+        foreach ([
+            ['Northwind Legal', '#1E3A5F', '#334155', '#C9A227', 'Cormorant Garamond', 'Lato', 'Trusted counsel since 1998', 'corporate-executive'],
+            ['Brightside Studio', '#7C3AED', '#1F2937', '#F472B6', 'Outfit', 'DM Sans', 'Design that sparks', null],
+        ] as [$name, $primary, $secondary, $accent, $heading, $body, $tagline, $slug]) {
+            $kit = $kits->save(null, [
+                'name' => $name, 'primary_color' => $primary, 'secondary_color' => $secondary, 'accent_color' => $accent,
+                'heading_font' => $heading, 'body_font' => $body, 'background_type' => 'gradient',
+                'background_color' => '#FFFFFF', 'background_color2' => $primary, 'background_angle' => 135,
+                'company' => ['name' => $name, 'tagline' => $tagline, 'website' => 'https://'.Str::slug($name).'.example', 'phone' => '+1 555 0100'],
+                'social_links' => ['linkedin' => 'https://www.linkedin.com/company/'.Str::slug($name)],
+            ], $designer);
+            $theme = ($slug ? $themes->firstWhere('slug', $slug) : null) ?? $themes->first();
+            if ($theme) {
+                $kits->createDesign($kit, $theme, $designer, $name.' · Standard');
+            }
         }
     }
 

@@ -6,12 +6,12 @@ use App\Models\CardDesign;
 use App\Models\CardTheme;
 use App\Models\Customer;
 use App\Models\User;
+use App\Support\CustomerFields;
 use App\Support\Scene\Scene;
 use App\Support\Scene\SceneValidator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -202,15 +202,39 @@ class CardDesignService
         }
     }
 
-    /** Merge-field values for the design: the attached customer, otherwise sample data. */
+    /**
+     * Merge-field values for the design: the attached customer, otherwise
+     * sample data. A brand kit fills in company details and the logo where
+     * the customer has none, and replaces the sample company details.
+     */
     public function mergeData(CardDesign $design): array
     {
+        $brand = $design->brand_kit_id ? ($design->brandKit?->mergeFallbacks() ?? []) : [];
         $customer = $design->customer;
         if (! $customer) {
-            return Scene::sampleData();
+            return array_merge(Scene::sampleData(), $brand);
         }
 
-        return $this->customerData($customer);
+        $data = $this->customerData($customer);
+        foreach ($brand as $key => $value) {
+            if (blank($data[$key] ?? null) && CustomerFields::visible($customer->visibility, 'card', $this->visibilityField($key))) {
+                $data[$key] = $value;
+            }
+        }
+
+        return $data;
+    }
+
+    /** The customer visibility switch that governs a merge key (so hidden fields stay hidden). */
+    private function visibilityField(string $key): string
+    {
+        foreach (CustomerFields::MERGE_MAP as $field => $keys) {
+            if (in_array($key, $keys, true)) {
+                return $field;
+            }
+        }
+
+        return $key;
     }
 
     public function customerData(Customer $customer): array
@@ -221,11 +245,11 @@ class CardDesignService
         $parts = preg_split('/\s+/', $name) ?: [];
         $initials = mb_strtoupper(mb_substr($parts[0] ?? '', 0, 1).(count($parts) > 1 ? mb_substr(end($parts), 0, 1) : ''));
         $profile = $customer->digitalProfiles()->where('is_active', true)->latest('id')->first();
-        $profileUrl = $profile && Route::has('profiles.public')
-            ? route('profiles.public', $profile->slug)
-            : rtrim(config('app.url'), '/').'/card/'.($profile->slug ?? Str::slug($name));
+        $profileUrl = $profile ? route('profiles.public', $profile->slug) : rtrim(config('app.url'), '/').'/card/'.Str::slug($name);
+        // QR codes on cards point at the short /q/ link so scans are counted.
+        $qrUrl = $profile ? route('qr.scan', app(DigitalProfileService::class)->qrCode($profile)->code) : $profileUrl;
 
-        return [
+        $data = [
             'full_name' => $name,
             'first_name' => $parts[0] ?? '',
             'professional_title' => (string) $customer->professional_title,
@@ -242,10 +266,22 @@ class CardDesignService
             'country' => (string) ($customer->country ?: $company?->country),
             'tagline' => (string) ($customer->business['description'] ?? $company?->description ?? ''),
             'profile_url' => $profileUrl,
+            'qr_url' => $qrUrl,
             'logo' => $company?->logo_path ? Storage::disk('public')->url($company->logo_path) : null,
             'photo' => $customer->profile_photo_path ? Storage::disk('public')->url($customer->profile_photo_path) : null,
             'initials' => $initials,
         ];
+
+        // Details the customer chose to keep off printed cards.
+        foreach (CustomerFields::MERGE_MAP as $field => $keys) {
+            if (! CustomerFields::visible($customer->visibility, 'card', $field)) {
+                foreach ($keys as $key) {
+                    $data[$key] = $key === 'photo' ? null : '';
+                }
+            }
+        }
+
+        return $data;
     }
 
     /** Merge data that renders every field as its raw {{tag}} (for template editing). */
@@ -273,7 +309,7 @@ class CardDesignService
     /** Cached front/back SVG thumbnails for listings. */
     public function preview(CardDesign $design): array
     {
-        return Cache::remember("design-preview:{$design->ulid}:{$design->version}:".$design->updated_at?->timestamp.':'.$design->customer?->updated_at?->timestamp, now()->addDay(), function () use ($design) {
+        return Cache::remember("design-preview:{$design->ulid}:{$design->version}:".$design->updated_at?->timestamp.':'.$design->customer?->updated_at?->timestamp.':'.($design->brand_kit_id ? $design->brandKit?->updated_at?->timestamp : ''), now()->addDay(), function () use ($design) {
             $options = $this->renderOptions($design);
 
             return [

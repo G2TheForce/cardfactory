@@ -62,6 +62,8 @@
                 @csrf
                 <button class="btn-ghost p-2" title="Duplicate design" aria-label="Duplicate design"><x-lucide-copy class="h-4 w-4" /></button>
             </form>
+            <a href="{{ route('designs.export', $design) }}" class="btn-ghost p-2" title="Export for print" aria-label="Export for print"
+               @click="if (dirty && !confirm('Export the last saved version? Save first to include your latest changes.')) $event.preventDefault()"><x-lucide-download class="h-4 w-4" /></a>
             <button class="btn-primary px-3 py-1.5" @click="save()" :disabled="saving" title="Save (Ctrl+S)">
                 <x-lucide-save class="h-4 w-4" /><span class="hidden sm:inline" x-text="saving ? 'Saving…' : 'Save'"></span>
             </button>

@@ -15,9 +15,10 @@ class CardThemePolicy
 
     public function view(User $user, CardTheme $theme): bool
     {
+        // A private theme is a user's own customisation: only its owner sees it.
         return $theme->status === CardTheme::STATUS_PUBLISHED
             || $theme->created_by === $user->id
-            || $user->can('themes.manage');
+            || ($user->can('themes.manage') && $theme->status !== ThemeManagementService::STATUS_PRIVATE);
     }
 
     /** Create from scratch (admin theme editor). */

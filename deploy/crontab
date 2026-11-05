@@ -1,0 +1,4 @@
+# crontab -u www-data -e
+# Laravel scheduler: prunes old exports, unfinished bulk runs, failed jobs,
+# expired password resets and expired API tokens.
+* * * * * cd /var/www/smartcard-studio/current && php artisan schedule:run >> /dev/null 2>&1

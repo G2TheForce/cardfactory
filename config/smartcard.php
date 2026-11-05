@@ -62,6 +62,52 @@ return [
         'print_dpi' => 300,
     ],
 
+    'profiles' => [
+        // Slugs that would clash with app pages or look official.
+        'reserved_slugs' => ['admin', 'api', 'app', 'login', 'logout', 'register', 'dashboard', 'settings', 'support', 'help', 'www', 'mail', 'card', 'cards', 'profile', 'profiles', 'new', 'edit', 'create'],
+    ],
+
+    // Currency for orders and revenue.
+    'currency' => env('APP_CURRENCY', 'USD'),
+
+    // Browser security headers (app/Http/Middleware/SecurityHeaders.php).
+    'security' => [
+        'csp' => (bool) env('SECURITY_CSP', true),
+        // Strict-Transport-Security on HTTPS requests. Only enable once the whole domain is served over HTTPS.
+        'hsts' => (bool) env('SECURITY_HSTS', false),
+        // Load balancers / CDNs allowed to set X-Forwarded-* headers: "*" or comma-separated IPs/CIDRs.
+        'trusted_proxies' => env('TRUSTED_PROXIES'),
+    ],
+
+    'imports' => [
+        // Rows per bulk generation file, and the largest upload in KB.
+        'max_rows' => (int) env('IMPORT_MAX_ROWS', 1000),
+        'max_file_kb' => (int) env('IMPORT_MAX_FILE_KB', 5120),
+        // Unfinished imports (and their uploaded files) are deleted after this many days.
+        'retention_days' => (int) env('IMPORT_RETENTION_DAYS', 7),
+    ],
+
+    'export' => [
+        // Headless Chrome/Chromium renders PNG and PDF. Leave empty to auto-detect.
+        'chrome_binary' => env('CHROME_PATH'),
+        // Needed when the queue worker runs as root (e.g. in containers).
+        'chrome_no_sandbox' => (bool) env('CHROME_NO_SANDBOX', true),
+        // Ghostscript converts PDFs to CMYK when installed. Leave empty to auto-detect "gs".
+        'ghostscript_binary' => env('GHOSTSCRIPT_PATH'),
+        'timeout' => (int) env('EXPORT_TIMEOUT', 120),
+        // Virtual time Chrome gives the (self-contained) page to lay out fonts and images.
+        'font_wait_ms' => 3000,
+        'disk' => env('EXPORT_DISK', 'local'),
+        // Finished export files are deleted after this many days (exports:prune).
+        'retention_days' => (int) env('EXPORT_RETENTION_DAYS', 7),
+    ],
+
+    'analytics' => [
+        // Request header holding the visitor's country code, set by a trusted proxy/CDN
+        // (Cloudflare sends CF-IPCountry). Leave empty to skip country analytics.
+        'country_header' => env('ANALYTICS_COUNTRY_HEADER', 'CF-IPCountry'),
+    ],
+
     // Seed demo accounts and sample data even in production (never on a live site).
     'seed_demo_data' => (bool) env('SEED_DEMO_DATA', false),
 

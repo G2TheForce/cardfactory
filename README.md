@@ -4,7 +4,7 @@ A Laravel SaaS application for designing, generating, managing and exporting
 professional **NFC smart visiting cards**, their **QR codes** and the
 **digital business profiles** they link to.
 
-> Status: **Phases 1–3** complete (foundation, theme management, visual card designer). See [Roadmap](#roadmap).
+> Status: **all 9 phases** complete. Production setup: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). REST API: [docs/API.md](docs/API.md).
 
 ## Stack
 
@@ -22,6 +22,7 @@ professional **NFC smart visiting cards**, their **QR codes** and the
 - Composer 2
 - Node.js 20+ and npm
 - MySQL 8+ (or MariaDB 10.11+)
+- For PNG/PDF exports: Chrome or Chromium (headless). Optional: Ghostscript for CMYK PDFs
 
 ## Installation (local development)
 
@@ -49,7 +50,7 @@ php artisan migrate --seed      # schema, roles, 20 themes, demo data (non-produ
 php artisan storage:link        # public uploads (avatars, logos, editor images and fonts)
 npm run build                   # or: npm run dev
 php artisan serve               # http://localhost:8000
-php artisan queue:work          # in a second terminal (mail, exports later)
+php artisan queue:work --queue=exports,default   # in a second terminal (exports, mail)
 ```
 
 ### Demo accounts (local development only)
@@ -111,7 +112,20 @@ the scene JSON. Users with `themes.publish` can publish, unpublish and delete th
 | `QUEUE_CONNECTION` | `database` by default; use `redis` in production |
 | `MAIL_*` | Password reset and contact-form mail |
 | `SMARTCARD_CONTACT_EMAIL` | Recipient for landing-page enquiries |
+| `ANALYTICS_COUNTRY_HEADER` | Header with the visitor's country set by your CDN (default `CF-IPCountry`; empty disables country stats) |
+| `CHROME_PATH` | Path to Chrome/Chromium for PNG and PDF exports (auto-detected if empty) |
+| `CHROME_NO_SANDBOX` | Run Chrome with `--no-sandbox` (default `true`; needed in most containers and as root) |
+| `GHOSTSCRIPT_PATH` | Path to `gs` for CMYK PDFs (auto-detected if empty) |
+| `EXPORT_TIMEOUT` | Seconds before a Chrome render is stopped (default 120) |
+| `EXPORT_DISK` / `EXPORT_RETENTION_DAYS` | Where export files are stored (private `local` disk) and how long they're kept (default 7 days) |
+| `IMPORT_MAX_ROWS` / `IMPORT_MAX_FILE_KB` | Bulk generator limits (default 1000 rows, 5 MB) |
+| `IMPORT_RETENTION_DAYS` | Unfinished bulk runs and their spreadsheets are deleted after this many days (default 7) |
+| `DB_QUEUE_RETRY_AFTER` | Seconds before a running job is retried; keep above the 3600 s bulk job timeout (default 3700) |
+| `APP_CURRENCY` | Currency for orders and revenue (default `USD`) |
 | `SEED_DEMO_DATA` | Force demo seeding in production (do not use on live sites) |
+| `SESSION_SECURE_COOKIE` | Send the session cookie over HTTPS only (set `true` in production) |
+| `SECURITY_CSP` / `SECURITY_HSTS` | Content-Security-Policy (default on) and Strict-Transport-Security (turn on once HTTPS-only) |
+| `TRUSTED_PROXIES` | Load balancer / CDN addresses allowed to set `X-Forwarded-*` headers (`*` or comma-separated) |
 
 ## Testing
 
@@ -127,13 +141,25 @@ To run the same suite against MySQL:
 DB_CONNECTION=mysql DB_DATABASE=smartcard_testing php artisan test
 ```
 
+| Suite | What it covers |
+| ----- | -------------- |
+| `tests/Unit` | Scene validation, SVG rendering (mm units, escaping, palette tokens, every library theme), spreadsheet header mapping, CSV formula neutralising, public codes, font URLs |
+| `tests/Feature/<module>` | Every module through HTTP: validation, CRUD, permissions, exports (with a fake Chrome; a real-Chrome test runs when Chrome is installed) |
+| `tests/Feature/Security/LinkCrawlTest` | Signs in as each demo role and follows every link the app shows: no 403, 404 or 500 anywhere. With demo data loaded it also catches N+1 queries (lazy loading throws outside production) |
+| `tests/Feature/Security/CrossTenantAccessTest` | Another customer and an unassigned designer try every route on someone else's design, profile, NFC card, brand kit, theme and customer record; nothing may be read or changed. Guests are sent to login. No route binds a numeric id |
+| `tests/Feature/Security/SecurityHeadersTest` | CSP, frame, referrer and HSTS headers |
+| `tests/Feature/GoldenPathTest` | End to end: customer → brand kit → design → profile → NFC card → print PDF → tap, scan, save contact → analytics |
+
+CI (`.github/workflows/tests.yml`) runs the suite on PHP 8.3–8.5 and checks code style
+(Pint), builds the assets and runs `composer audit` and `npm audit` on every pull request.
+
 ## Project structure
 
 ```
 app/
   Actions/Fortify/        registration, profile and password actions
   Http/Controllers/       thin controllers (Admin/, Settings/, Api/V1/)
-  Http/Middleware/        EnsureUserIsActive
+  Http/Middleware/        EnsureUserIsActive, SecurityHeaders
   Http/Requests/          form request validation
   Http/Resources/         API resources
   Models/                 Eloquent models (public ULIDs via Concerns/HasPublicUlid)
@@ -144,8 +170,9 @@ config/smartcard.php      roles, permissions, plans, card defaults
 resources/views/
   components/             reusable Blade components and layouts
   dashboard/ admin/ settings/ marketing/ auth/
-resources/js/modules/     frontend modules (charts, later: editor)
-docs/                     API and deployment documentation
+resources/js/              editor/ (visual designer), modules/ (charts, etc.)
+docs/                     API.md, DEPLOYMENT.md, sample spreadsheet
+deploy/                   nginx, supervisor, cron and deploy-script samples
 ```
 
 ## Visual card designer
@@ -181,6 +208,170 @@ Access: owners and the customer the design belongs to can edit; `designs.manage`
 design, `designs.assigned` edits designs assigned to that designer, `designs.view-any` is
 read-only.
 
+## Brand kits
+
+`/brand-kits` keeps a company's logo, primary/secondary/accent colours, heading and body
+fonts, background (solid, gradient or image), company details (name, tagline, website,
+phone, email, address) and social links in one place. Each kit has its own page with every
+design (template) that uses it.
+
+- **New design for this brand** starts a design from any theme with the kit applied (its
+  background goes on the back).
+- **Apply to an existing design** swaps in the kit's palette and fonts (and optionally the
+  background on the front and/or back). The layout stays; the design version is bumped so
+  open editors reload.
+- The kit's company details and logo fill the card's merge fields where the customer has
+  none, and replace the sample details on templates without a customer. Fields the
+  customer hid from cards stay hidden.
+- Kits belong to the user who made them; staff with `designs.manage` see them all.
+  Deleting a kit keeps its designs as they are.
+
+## Customers
+
+`/customers` (staff and assigned designers) lists customers with search, status,
+designer and sort filters, and a Deleted view for restoring soft-deleted records.
+Each customer has personal and contact details, a company (with logo), address and map
+location, social links, business description, services and opening hours, up to ten
+custom fields and custom links, an introduction, portfolio and booking links, and a
+**visibility** switch per detail for the printed card and the digital profile.
+Hidden card details are left blank when designs are filled in (`CardDesignService::customerData`).
+
+- Staff (`customers.manage`) set the status, assign a designer and can create a login,
+  which emails the customer a link to set their password.
+- Customer accounts edit their own record from **My card details** (they cannot change
+  status or designer, and company changes never touch a company record shared with others).
+- Photos and logos are re-encoded (max 1200 px); the detail page shows designs,
+  profiles, NFC cards, completeness and the activity log.
+
+## Digital business cards
+
+Every profile (`/profiles`) is a mobile-first public page at `/card/{slug}` with call,
+WhatsApp, email and website buttons, **Save contact** (a vCard 3.0 `.vcf` with photo),
+contact details, social links, custom buttons, services and opening hours, a portfolio
+gallery, a click-to-load map, Share and an on-screen QR code. It shows only the details
+the customer marked "show on profile".
+
+- **Themes and layout**: five profile themes (Classic, Minimal, Bold, Midnight, Elegant),
+  independent of card themes, plus accent colour, button shape, headline and cover image.
+  Sections can be reordered and switched off per profile.
+- **Links**: each profile has a unique slug, a card identifier (`P-XXXXXXXX`), a QR link
+  `/q/{code}` and an NFC link `/c/{identifier}`. Changing the slug never breaks QR codes or
+  NFC cards. Card designs' QR codes encode the tracked `/q/` link.
+- **QR downloads**: PNG (512–4096 px), SVG and vector PDF (25/50/100 mm), with colour,
+  transparent background, quiet zone and error-correction settings. Low-contrast colours are refused.
+- **NFC cards** (`nfc.manage`): assign a card by its printed ID (new IDs are added to
+  stock), record the tag UID, mark it encoded, move it to another profile, replace a lost
+  or damaged card, or unassign it. Each card is written once with its permanent URL
+  `/n/{card id}`, which is resolved on every tap, so reassigning needs no rewriting and a
+  lost card stops working straight away. The first tap activates a newly assigned card.
+  The app does not program tags itself: staff use an NFC writer app or USB writer, and
+  on Android Chrome a **Write with this phone** button uses Web NFC.
+- **Privacy-friendly analytics**: views, QR scans, NFC taps, contact downloads and clicks
+  are stored without IP addresses or full user agents. Unique visitors use a salted hash
+  that changes daily; Do Not Track / Global Privacy Control requests skip even that.
+  Bots, reloads within 30 minutes and the owner's own visits aren't counted.
+- Inactive profiles, inactive customers and deleted profiles show a "not available"
+  page (404) for the public page, QR and NFC links. Profiles are hidden from search
+  engines unless the owner opts in.
+
+## Exports
+
+Open a design and choose **Export** (editor top bar or the designs list). Exports run on
+the `exports` queue, so a queue worker must be running:
+
+```bash
+php artisan queue:work --queue=exports,default
+```
+
+| Format | What you get |
+| ------ | ------------ |
+| **PDF** | Vector PDF, one page per side, with exact `MediaBox`, `BleedBox` and `TrimBox`; fonts embedded. Optional crop marks (8 mm margin, marks 1 mm outside the bleed, job label) and CMYK conversion. |
+| **PNG** | Rendered from the vector source at 150, 300 or 600 DPI (never an upscaled screenshot of the editor), cropped to the exact pixel size with the DPI written into the file. Optional transparent background. |
+| **SVG** | Self-contained vector file with images and fonts embedded. |
+
+- Sizes are physical: an 85.6 × 54 mm card with 3 mm bleed at 300 DPI is 1082 × 709 px.
+- Bleed is 0–5 mm. Guides (bleed and safe area) and rounded corners are for proofs only.
+- Front and back as PNG or SVG come as a ZIP; PDFs hold both sides as pages.
+- Files are private: only the person who ran the export (or users with `exports.manage`)
+  can download them. `php artisan exports:prune` (scheduled daily) deletes files after
+  `EXPORT_RETENTION_DAYS` and marks exports stuck for over a day as failed.
+
+**How rendering works.** The card is rendered to millimetre-based SVG by
+`CardRenderingService`, wrapped in a self-contained HTML page (images as data URIs,
+Google Fonts fetched by the server, cached in `storage/app/private/font-cache` and
+embedded) and printed by headless Chrome with networking disabled, so user content can't
+make the server fetch URLs. `PdfBoxes` then writes the print boxes.
+
+**Installing the tools.** Debian/Ubuntu: `apt install chromium ghostscript` (or install
+Google Chrome). Without Chrome, PNG and PDF are disabled in the UI with an explanation and
+SVG still works. Without Ghostscript the CMYK option is disabled.
+
+**CMYK.** When Ghostscript is installed, the CMYK option converts the PDF with
+`-sColorConversionStrategy=CMYK` and keeps the print boxes. It uses Ghostscript's default
+CMYK profile, not a press-specific ICC profile, so ask your printer for a proof if colour
+matching is critical. Most digital card printers accept the RGB PDF and convert themselves.
+
+## Bulk generator
+
+**Customers → Bulk generator** (needs `imports.manage`: admins and sales managers).
+
+1. **Upload** a `.csv`, `.xlsx`, `.xls` or `.ods` file with one customer per row and column
+   names in the first row (up to 1000 rows). Download the Excel or CSV template from the
+   upload page, or try [docs/samples/bulk-sample.csv](docs/samples/bulk-sample.csv).
+2. **Match columns.** Common headers ("Name", "Phone", "Job title", "Company", "Slug"…)
+   are matched automatically; every field can be changed. Choose a published card theme
+   or one of your designs as the template, whether to create digital profiles (with the
+   profile theme), and whether to skip people who already exist (same email).
+3. **Check rows.** Every row is validated with the customer form's rules, plus duplicate
+   emails in the file, existing customers and profile addresses that are taken or
+   reserved. Problems are listed by spreadsheet row and column, with a downloadable CSV
+   report. A preview shows the rows that will be created. Websites without `https://`
+   are fixed automatically.
+4. **Generate** (queued). Each valid row becomes a customer, a card design filled with
+   their details and, optionally, a digital profile with its public URL, QR code and NFC
+   link. Rows are created all-or-nothing, so a failed row leaves nothing half made.
+5. **Download** every card as a ZIP (one PDF, PNG or SVG per card, plus `cards.csv`) or as
+   one combined PDF with every card's pages in order, using the same print options as
+   single exports. "Customer and card list (CSV)" lists names, design ids, profile, QR
+   and NFC URLs and profile codes for production.
+
+The uploaded spreadsheet is deleted once generation finishes, and the error report keeps
+row numbers and messages only, not the submitted values. Unfinished runs are deleted by
+`php artisan imports:prune` (scheduled daily). CSV downloads neutralise spreadsheet
+formulas in user-supplied values.
+
+## NFC inventory, orders and analytics
+
+**NFC cards** (`nfc.manage`): every physical card has a printed ID (e.g. `SC-7K2M9QXA`),
+an optional hardware UID, a tag type (NTAG213/215/216, MIFARE, other), a product, a
+batch and a status: in stock, assigned, active, sold, defective, lost, replaced or
+retired. Add cards in batches of up to 500, either with generated IDs or one per UID
+pasted from a reader. "CSV for encoding" downloads each card's permanent tag URL
+(`/n/{card id}`) for your NFC writer app or USB encoder. On a card's page you can copy
+the URL, record the UID, link or move the card to a profile, unlink it, and see its
+assignment and order history. Marking a card defective, lost or retired unlinks it at
+once, so tapping it no longer opens the profile. Lost cards are swapped for new ones
+from the profile page ("Replace").
+
+**Inventory** (`inventory.manage`): products by SKU with price, cost and reorder level,
+and live stock per product (in stock, assigned, sold, out of use). Products at or below
+their reorder level are flagged here and on the dashboard.
+
+**Orders** (`orders.manage`): orders per customer with items, tax and currency; totals
+are worked out on the server and product names and prices are copied into the order.
+Marking an order paid, processing, shipped or completed records the payment date and
+counts it as revenue. Add the shipped cards by ID; cards from stock become "sold".
+Customer pages list their orders.
+
+**Analytics** (everyone, for the profiles they can see; customers see their own):
+profile views, unique visitors, QR scans, NFC taps, contacts saved and clicks on
+website, WhatsApp, email, phone, social networks and other links, with the change
+against the previous period. Traffic is shown daily, weekly or monthly for the last 7,
+30 or 90 days or 12 months, with devices, countries (when your CDN sends a country
+header), how people arrived (QR, NFC, direct), referring websites and the most visited
+profiles. "Daily CSV" exports the counts per day. No IP addresses, cookies or full user
+agents are stored.
+
 ## Security notes
 
 - Passwords hashed with bcrypt; stronger password rules in production.
@@ -192,17 +383,27 @@ read-only.
 - Separate named rate limiters for editor previews, saves and uploads.
 - Public resources use ULIDs; sequential ids never appear in URLs.
 - Audit log records sign-ins and administrative changes (passwords redacted).
+- Security headers on every response: Content-Security-Policy (self, Google Fonts and
+  Google Maps embeds only), `X-Frame-Options`, `nosniff`, `Referrer-Policy`,
+  `Permissions-Policy`, and HSTS over HTTPS when enabled.
+- Policies scope every query: customers only see their own designs, profiles, NFC cards,
+  brand kits and analytics; private themes are visible to their owner only.
+- Exported files are private and served only to their owner; Chrome renders offline so
+  card content can't make the server fetch URLs.
+- Visitor analytics store no IP addresses, cookies or full user agents.
+- CSV exports neutralise spreadsheet formulas (`=`, `+`, `-`, `@`) in user content.
+- `composer audit` and `npm audit` run in CI.
 
 ## Roadmap
 
 1. **Foundation**: auth, roles, dashboard, base UI, full database schema ✅
 2. **Theme management**: 20 editable themes, gallery, customiser, favourites, publishing ✅
 3. **Visual card designer**: canvas editor, uploads, layers, undo/redo, front/back, save/load ✅
-4. Customer management
-5. Digital business cards (public profiles, vCard, QR, NFC URLs)
-6. Export engine (PNG/SVG/PDF, 300 DPI, bleed, crop marks)
-7. Bulk generation (CSV/Excel import, ZIP, combined PDF)
-8. Inventory and analytics
-9. Testing hardening, performance, deployment guide
+4. **Customer management**: list, search, forms, uploads, visibility, logins, API ✅
+5. **Digital business cards**: public profiles, 5 profile themes, layouts, vCard, QR downloads, NFC assignment ✅
+6. **Export engine**: PNG/SVG/PDF, 150–600 DPI, bleed, crop marks, print boxes, CMYK, queued downloads ✅
+7. **Bulk generation**: CSV/Excel import, column mapping, validation report, batch customers/designs/profiles/QR, ZIP and combined PDF ✅
+8. **Inventory and analytics**: NFC stock and UIDs, products, orders, customer analytics dashboard, dashboard stock charts ✅
+9. **Testing and production**: brand kits, link-crawler, cross-tenant and end-to-end tests, N+1 guard, indexes, security headers, deployment guide ✅
 
 See [docs/API.md](docs/API.md) for the REST API.

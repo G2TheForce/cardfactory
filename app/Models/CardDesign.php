@@ -14,7 +14,7 @@ class CardDesign extends Model
     use HasFactory, HasPublicUlid, SoftDeletes;
 
     protected $fillable = [
-        'user_id', 'customer_id', 'card_theme_id', 'brand_kit_id', 'designer_id', 'name', 'status',
+        'user_id', 'customer_id', 'card_theme_id', 'customer_import_id', 'brand_kit_id', 'designer_id', 'name', 'status',
         'width_mm', 'height_mm', 'bleed_mm', 'corner_radius_mm', 'orientation',
         'front', 'back', 'settings', 'front_thumbnail_path', 'back_thumbnail_path', 'version',
     ];

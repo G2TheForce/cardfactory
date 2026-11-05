@@ -7,6 +7,8 @@ use App\Services\ActivityLogger;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -26,6 +28,13 @@ class AppServiceProvider extends ServiceProvider
         // Super Admin can do everything; return null (not false) so other users fall through to policies.
         Gate::before(fn (User $user) => $user->hasRole(User::ROLE_SUPER_ADMIN) ? true : null);
 
+        // Catch N+1 queries during development and in tests; production just carries on.
+        Model::preventLazyLoading(! app()->isProduction());
+
+        if ($proxies = config('smartcard.security.trusted_proxies')) {
+            TrustProxies::at($proxies === '*' ? '*' : array_map('trim', explode(',', $proxies)));
+        }
+
         Password::defaults(fn () => app()->isProduction()
             ? Password::min(10)->letters()->mixedCase()->numbers()->uncompromised()
             : Password::min(8));
@@ -35,6 +44,7 @@ class AppServiceProvider extends ServiceProvider
         // Named limiters keep separate counters (plain throttle:x,y share one counter per user).
         RateLimiter::for('previews', fn (Request $request) => Limit::perMinute(600)->by('previews:'.($request->user()?->id ?: $request->ip())));
         RateLimiter::for('saves', fn (Request $request) => Limit::perMinute(60)->by('saves:'.($request->user()?->id ?: $request->ip())));
+        RateLimiter::for('beacons', fn (Request $request) => Limit::perMinute(60)->by('beacons:'.$request->ip()));
         RateLimiter::for('uploads', fn (Request $request) => Limit::perMinute(30)->by('uploads:'.($request->user()?->id ?: $request->ip())));
 
         Event::listen(Login::class, function (Login $event) {

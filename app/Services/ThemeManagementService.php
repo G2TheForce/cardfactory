@@ -202,7 +202,7 @@ class ThemeManagementService
     }
 
     /** Replace the theme's heading/body font families inside scene text elements. */
-    private function swapFonts(array $side, array $old, array $new): array
+    public function swapFonts(array $side, array $old, array $new): array
     {
         $map = [];
         if (($old['heading'] ?? null) !== ($new['heading'] ?? null)) {

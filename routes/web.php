@@ -41,3 +41,8 @@ Route::middleware(['auth'])->group(function () {
 
 require __DIR__.'/themes.php';
 require __DIR__.'/designs.php';
+require __DIR__.'/brand-kits.php';
+require __DIR__.'/customers.php';
+require __DIR__.'/profiles.php';
+require __DIR__.'/imports.php';
+require __DIR__.'/inventory.php';

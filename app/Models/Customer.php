@@ -14,7 +14,7 @@ class Customer extends Model
     use HasFactory, HasPublicUlid, SoftDeletes;
 
     protected $fillable = [
-        'user_id', 'company_id', 'created_by', 'assigned_designer_id',
+        'user_id', 'company_id', 'created_by', 'assigned_designer_id', 'customer_import_id',
         'full_name', 'professional_title', 'profile_photo_path', 'department', 'designation',
         'mobile', 'whatsapp', 'email', 'website', 'office_phone',
         'country', 'province', 'city', 'office_address', 'map_url', 'latitude', 'longitude',

@@ -38,7 +38,7 @@ class DesignController extends Controller
         ]);
 
         $designs = CardDesignPolicy::visibleTo($request->user())
-            ->with(['customer.company', 'theme:id,ulid,name', 'owner:id,name'])
+            ->with(['customer.company', 'theme:id,ulid,name', 'owner:id,name', 'brandKit'])
             ->when($filters['status'] ?? null, fn ($q, $s) => $q->where('status', $s))
             ->when($filters['search'] ?? null, fn ($q, $s) => $q->where(fn ($q) => $q->where('name', 'like', "%$s%")
                 ->orWhereHas('customer', fn ($c) => $c->where('full_name', 'like', "%$s%"))))
