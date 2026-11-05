@@ -16,7 +16,10 @@
                 @csrf
                 <button class="btn-secondary"><x-lucide-copy class="h-4 w-4" /> Duplicate</button>
             </form>
-            <a href="{{ route('themes.customize', $theme) }}" class="btn-primary"><x-lucide-palette class="h-4 w-4" /> Customise</a>
+            @if ($canStartDesign)
+                <a href="{{ route('designs.create', ['theme' => $theme->ulid]) }}" class="btn-primary"><x-lucide-pen-tool class="h-4 w-4" /> Design with this theme</a>
+            @endif
+            <a href="{{ route('themes.customize', $theme) }}" class="{{ $canStartDesign ? 'btn-secondary' : 'btn-primary' }}"><x-lucide-palette class="h-4 w-4" /> Customise</a>
         </x-slot:actions>
     </x-page-header>
 
