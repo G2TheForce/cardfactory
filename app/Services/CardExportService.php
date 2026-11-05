@@ -9,6 +9,7 @@ use App\Models\CustomerImport;
 use App\Models\User;
 use App\Services\Export\ChromeRenderer;
 use App\Services\Export\PdfBoxes;
+use App\Support\Executable;
 use App\Support\Fonts;
 use App\Support\Scene\Scene;
 use Illuminate\Support\Facades\File;
@@ -319,13 +320,9 @@ class CardExportService
 
     public function ghostscript(): ?string
     {
-        $bin = config('smartcard.export.ghostscript_binary') ?: 'gs';
-        if (str_contains($bin, '/')) {
-            return is_executable($bin) ? $bin : null;
-        }
-        $path = trim((string) @shell_exec('command -v '.escapeshellarg($bin).' 2>/dev/null'));
+        $configured = config('smartcard.export.ghostscript_binary');
 
-        return $path !== '' ? $path : null;
+        return Executable::find($configured ? [$configured] : ['gs', 'gswin64c', 'gswin32c']);
     }
 
     public function downloadName(CardExport $export): string

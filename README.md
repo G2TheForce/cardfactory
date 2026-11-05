@@ -4,7 +4,7 @@ A Laravel SaaS application for designing, generating, managing and exporting
 professional **NFC smart visiting cards**, their **QR codes** and the
 **digital business profiles** they link to.
 
-> Status: **all 9 phases** complete. Production setup: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). REST API: [docs/API.md](docs/API.md).
+> Status: **all 9 phases** complete. Production setup: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Windows (local): [docs/WINDOWS.md](docs/WINDOWS.md). REST API: [docs/API.md](docs/API.md).
 
 ## Stack
 
@@ -25,6 +25,8 @@ professional **NFC smart visiting cards**, their **QR codes** and the
 - For PNG/PDF exports: Chrome or Chromium (headless). Optional: Ghostscript for CMYK PDFs
 
 ## Installation (local development)
+
+On Windows, follow [docs/WINDOWS.md](docs/WINDOWS.md) (PowerShell, SQLite, 64-bit PHP).
 
 ```bash
 git clone https://github.com/G2TheForce/cardfactory.git smartcard-studio
@@ -113,7 +115,7 @@ the scene JSON. Users with `themes.publish` can publish, unpublish and delete th
 | `MAIL_*` | Password reset and contact-form mail |
 | `SMARTCARD_CONTACT_EMAIL` | Recipient for landing-page enquiries |
 | `ANALYTICS_COUNTRY_HEADER` | Header with the visitor's country set by your CDN (default `CF-IPCountry`; empty disables country stats) |
-| `CHROME_PATH` | Path to Chrome/Chromium for PNG and PDF exports (auto-detected if empty) |
+| `CHROME_PATH` | Path to Chrome/Chromium for PNG and PDF exports (auto-detected if empty, including Chrome and Edge on Windows and Chrome on macOS). Quote Windows paths with single quotes |
 | `CHROME_NO_SANDBOX` | Run Chrome with `--no-sandbox` (default `true`; needed in most containers and as root) |
 | `GHOSTSCRIPT_PATH` | Path to `gs` for CMYK PDFs (auto-detected if empty) |
 | `EXPORT_TIMEOUT` | Seconds before a Chrome render is stopped (default 120) |
