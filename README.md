@@ -4,7 +4,7 @@ A Laravel SaaS application for designing, generating, managing and exporting
 professional **NFC smart visiting cards**, their **QR codes** and the
 **digital business profiles** they link to.
 
-> Status: **Phases 1–5** complete (foundation, theme management, visual card designer, customer management, digital business cards). See [Roadmap](#roadmap).
+> Status: **all 9 phases** complete. Production setup: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). REST API: [docs/API.md](docs/API.md).
 
 ## Stack
 
@@ -123,6 +123,9 @@ the scene JSON. Users with `themes.publish` can publish, unpublish and delete th
 | `DB_QUEUE_RETRY_AFTER` | Seconds before a running job is retried; keep above the 3600 s bulk job timeout (default 3700) |
 | `APP_CURRENCY` | Currency for orders and revenue (default `USD`) |
 | `SEED_DEMO_DATA` | Force demo seeding in production (do not use on live sites) |
+| `SESSION_SECURE_COOKIE` | Send the session cookie over HTTPS only (set `true` in production) |
+| `SECURITY_CSP` / `SECURITY_HSTS` | Content-Security-Policy (default on) and Strict-Transport-Security (turn on once HTTPS-only) |
+| `TRUSTED_PROXIES` | Load balancer / CDN addresses allowed to set `X-Forwarded-*` headers (`*` or comma-separated) |
 
 ## Testing
 
@@ -138,13 +141,25 @@ To run the same suite against MySQL:
 DB_CONNECTION=mysql DB_DATABASE=smartcard_testing php artisan test
 ```
 
+| Suite | What it covers |
+| ----- | -------------- |
+| `tests/Unit` | Scene validation, SVG rendering (mm units, escaping, palette tokens, every library theme), spreadsheet header mapping, CSV formula neutralising, public codes, font URLs |
+| `tests/Feature/<module>` | Every module through HTTP: validation, CRUD, permissions, exports (with a fake Chrome; a real-Chrome test runs when Chrome is installed) |
+| `tests/Feature/Security/LinkCrawlTest` | Signs in as each demo role and follows every link the app shows: no 403, 404 or 500 anywhere. With demo data loaded it also catches N+1 queries (lazy loading throws outside production) |
+| `tests/Feature/Security/CrossTenantAccessTest` | Another customer and an unassigned designer try every route on someone else's design, profile, NFC card, brand kit, theme and customer record; nothing may be read or changed. Guests are sent to login. No route binds a numeric id |
+| `tests/Feature/Security/SecurityHeadersTest` | CSP, frame, referrer and HSTS headers |
+| `tests/Feature/GoldenPathTest` | End to end: customer → brand kit → design → profile → NFC card → print PDF → tap, scan, save contact → analytics |
+
+CI (`.github/workflows/tests.yml`) runs the suite on PHP 8.3–8.5 and checks code style
+(Pint), builds the assets and runs `composer audit` and `npm audit` on every pull request.
+
 ## Project structure
 
 ```
 app/
   Actions/Fortify/        registration, profile and password actions
   Http/Controllers/       thin controllers (Admin/, Settings/, Api/V1/)
-  Http/Middleware/        EnsureUserIsActive
+  Http/Middleware/        EnsureUserIsActive, SecurityHeaders
   Http/Requests/          form request validation
   Http/Resources/         API resources
   Models/                 Eloquent models (public ULIDs via Concerns/HasPublicUlid)
@@ -155,8 +170,9 @@ config/smartcard.php      roles, permissions, plans, card defaults
 resources/views/
   components/             reusable Blade components and layouts
   dashboard/ admin/ settings/ marketing/ auth/
-resources/js/modules/     frontend modules (charts, later: editor)
-docs/                     API and deployment documentation
+resources/js/              editor/ (visual designer), modules/ (charts, etc.)
+docs/                     API.md, DEPLOYMENT.md, sample spreadsheet
+deploy/                   nginx, supervisor, cron and deploy-script samples
 ```
 
 ## Visual card designer
@@ -191,6 +207,24 @@ uploader; only they can list or delete them.
 Access: owners and the customer the design belongs to can edit; `designs.manage` edits any
 design, `designs.assigned` edits designs assigned to that designer, `designs.view-any` is
 read-only.
+
+## Brand kits
+
+`/brand-kits` keeps a company's logo, primary/secondary/accent colours, heading and body
+fonts, background (solid, gradient or image), company details (name, tagline, website,
+phone, email, address) and social links in one place. Each kit has its own page with every
+design (template) that uses it.
+
+- **New design for this brand** starts a design from any theme with the kit applied (its
+  background goes on the back).
+- **Apply to an existing design** swaps in the kit's palette and fonts (and optionally the
+  background on the front and/or back). The layout stays; the design version is bumped so
+  open editors reload.
+- The kit's company details and logo fill the card's merge fields where the customer has
+  none, and replace the sample details on templates without a customer. Fields the
+  customer hid from cards stay hidden.
+- Kits belong to the user who made them; staff with `designs.manage` see them all.
+  Deleting a kit keeps its designs as they are.
 
 ## Customers
 
@@ -349,6 +383,16 @@ agents are stored.
 - Separate named rate limiters for editor previews, saves and uploads.
 - Public resources use ULIDs; sequential ids never appear in URLs.
 - Audit log records sign-ins and administrative changes (passwords redacted).
+- Security headers on every response: Content-Security-Policy (self, Google Fonts and
+  Google Maps embeds only), `X-Frame-Options`, `nosniff`, `Referrer-Policy`,
+  `Permissions-Policy`, and HSTS over HTTPS when enabled.
+- Policies scope every query: customers only see their own designs, profiles, NFC cards,
+  brand kits and analytics; private themes are visible to their owner only.
+- Exported files are private and served only to their owner; Chrome renders offline so
+  card content can't make the server fetch URLs.
+- Visitor analytics store no IP addresses, cookies or full user agents.
+- CSV exports neutralise spreadsheet formulas (`=`, `+`, `-`, `@`) in user content.
+- `composer audit` and `npm audit` run in CI.
 
 ## Roadmap
 
@@ -360,6 +404,6 @@ agents are stored.
 6. **Export engine**: PNG/SVG/PDF, 150–600 DPI, bleed, crop marks, print boxes, CMYK, queued downloads ✅
 7. **Bulk generation**: CSV/Excel import, column mapping, validation report, batch customers/designs/profiles/QR, ZIP and combined PDF ✅
 8. **Inventory and analytics**: NFC stock and UIDs, products, orders, customer analytics dashboard, dashboard stock charts ✅
-9. Testing hardening, performance, deployment guide
+9. **Testing and production**: brand kits, link-crawler, cross-tenant and end-to-end tests, N+1 guard, indexes, security headers, deployment guide ✅
 
 See [docs/API.md](docs/API.md) for the REST API.

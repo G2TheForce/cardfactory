@@ -8,6 +8,7 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -29,6 +30,10 @@ class AppServiceProvider extends ServiceProvider
 
         // Catch N+1 queries during development and in tests; production just carries on.
         Model::preventLazyLoading(! app()->isProduction());
+
+        if ($proxies = config('smartcard.security.trusted_proxies')) {
+            TrustProxies::at($proxies === '*' ? '*' : array_map('trim', explode(',', $proxies)));
+        }
 
         Password::defaults(fn () => app()->isProduction()
             ? Password::min(10)->letters()->mixedCase()->numbers()->uncompromised()

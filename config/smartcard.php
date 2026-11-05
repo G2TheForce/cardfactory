@@ -75,6 +75,8 @@ return [
         'csp' => (bool) env('SECURITY_CSP', true),
         // Strict-Transport-Security on HTTPS requests. Only enable once the whole domain is served over HTTPS.
         'hsts' => (bool) env('SECURITY_HSTS', false),
+        // Load balancers / CDNs allowed to set X-Forwarded-* headers: "*" or comma-separated IPs/CIDRs.
+        'trusted_proxies' => env('TRUSTED_PROXIES'),
     ],
 
     'imports' => [

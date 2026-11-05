@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 Schedule::command('exports:prune')->daily();
 Schedule::command('imports:prune')->daily();
+Schedule::command('queue:prune-failed --hours=168')->daily();
+Schedule::command('auth:clear-resets')->everyFifteenMinutes();
+Schedule::command('sanctum:prune-expired --hours=24')->daily();
