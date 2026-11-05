@@ -4,7 +4,7 @@ A Laravel SaaS application for designing, generating, managing and exporting
 professional **NFC smart visiting cards**, their **QR codes** and the
 **digital business profiles** they link to.
 
-> Status: **Phases 1–3** complete (foundation, theme management, visual card designer). See [Roadmap](#roadmap).
+> Status: **Phases 1–4** complete (foundation, theme management, visual card designer, customer management). See [Roadmap](#roadmap).
 
 ## Stack
 
@@ -181,6 +181,23 @@ Access: owners and the customer the design belongs to can edit; `designs.manage`
 design, `designs.assigned` edits designs assigned to that designer, `designs.view-any` is
 read-only.
 
+## Customers
+
+`/customers` (staff and assigned designers) lists customers with search, status,
+designer and sort filters, and a Deleted view for restoring soft-deleted records.
+Each customer has personal and contact details, a company (with logo), address and map
+location, social links, business description, services and opening hours, up to ten
+custom fields and custom links, an introduction, portfolio and booking links, and a
+**visibility** switch per detail for the printed card and the digital profile.
+Hidden card details are left blank when designs are filled in (`CardDesignService::customerData`).
+
+- Staff (`customers.manage`) set the status, assign a designer and can create a login,
+  which emails the customer a link to set their password.
+- Customer accounts edit their own record from **My card details** (they cannot change
+  status or designer, and company changes never touch a company record shared with others).
+- Photos and logos are re-encoded (max 1200 px); the detail page shows designs,
+  profiles, NFC cards, completeness and the activity log.
+
 ## Security notes
 
 - Passwords hashed with bcrypt; stronger password rules in production.
@@ -198,7 +215,7 @@ read-only.
 1. **Foundation**: auth, roles, dashboard, base UI, full database schema ✅
 2. **Theme management**: 20 editable themes, gallery, customiser, favourites, publishing ✅
 3. **Visual card designer**: canvas editor, uploads, layers, undo/redo, front/back, save/load ✅
-4. Customer management
+4. **Customer management**: list, search, forms, uploads, visibility, logins, API ✅
 5. Digital business cards (public profiles, vCard, QR, NFC URLs)
 6. Export engine (PNG/SVG/PDF, 300 DPI, bleed, crop marks)
 7. Bulk generation (CSV/Excel import, ZIP, combined PDF)

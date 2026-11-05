@@ -6,6 +6,7 @@ use App\Models\CardDesign;
 use App\Models\CardTheme;
 use App\Models\Customer;
 use App\Models\User;
+use App\Support\CustomerFields;
 use App\Support\Scene\Scene;
 use App\Support\Scene\SceneValidator;
 use Illuminate\Support\Arr;
@@ -225,7 +226,7 @@ class CardDesignService
             ? route('profiles.public', $profile->slug)
             : rtrim(config('app.url'), '/').'/card/'.($profile->slug ?? Str::slug($name));
 
-        return [
+        $data = [
             'full_name' => $name,
             'first_name' => $parts[0] ?? '',
             'professional_title' => (string) $customer->professional_title,
@@ -246,6 +247,17 @@ class CardDesignService
             'photo' => $customer->profile_photo_path ? Storage::disk('public')->url($customer->profile_photo_path) : null,
             'initials' => $initials,
         ];
+
+        // Details the customer chose to keep off printed cards.
+        foreach (CustomerFields::MERGE_MAP as $field => $keys) {
+            if (! CustomerFields::visible($customer->visibility, 'card', $field)) {
+                foreach ($keys as $key) {
+                    $data[$key] = $key === 'photo' ? null : '';
+                }
+            }
+        }
+
+        return $data;
     }
 
     /** Merge data that renders every field as its raw {{tag}} (for template editing). */

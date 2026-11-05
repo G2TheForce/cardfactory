@@ -104,5 +104,48 @@ Same fields plus the full editable `front` and `back` scenes (see
 
 Toggles the theme in your favourites. Returns `{ "data": { "favorite": true } }`.
 
-More endpoints (designs, customers, profiles, NFC, exports) are added in later
-phases and documented here.
+### Customers
+
+Staff with `customers.view-any` see every customer; designers see customers
+assigned to them. Creating, updating and deleting needs `customers.manage`
+(a customer account may update only its own record).
+
+| Method | Path | Ability |
+| --- | --- | --- |
+| `GET` | `/customers?search=&status=active&per_page=25` | `read` |
+| `GET` | `/customers/{id}` | `read` |
+| `POST` | `/customers` | `write` |
+| `PATCH` / `PUT` | `/customers/{id}` | `write` |
+| `DELETE` | `/customers/{id}` (soft delete) | `write` |
+
+Request fields match the web form: `full_name` (required on create),
+`professional_title`, `designation`, `department`, `mobile`, `whatsapp`,
+`office_phone`, `email`, `website`, `office_address`, `city`, `province`,
+`country`, `map_url`, `latitude`, `longitude`, `company_name`,
+`company_website`, `social_links` (`{linkedin, facebook, instagram, x, tiktok,
+youtube, github}`), `business` (`{description, services[], hours{monday…sunday}}`),
+`custom_fields[] {label, value}`, `custom_links[] {label, url}`, `introduction`,
+`portfolio_url`, `booking_url`, `visibility` (`{card: {field: bool}, profile: {field: bool}}`)
+and, for staff, `status`, `assigned_designer` (user id) and `create_login`.
+`photo` and `company_logo` can be sent as multipart uploads. With `PATCH`, groups
+you leave out are kept as they are.
+
+```json
+{
+  "data": {
+    "id": "01M6NGK6K3CC98WC9M3C1CG6ER",
+    "full_name": "Grace Hopper",
+    "professional_title": "Rear Admiral",
+    "photo_url": "https://.../storage/customers/.../01m6....jpg",
+    "contact": { "mobile": "+1 202 555 0147", "email": "grace@navy.example", "...": null },
+    "address": { "city": null, "country": null, "latitude": null, "longitude": null },
+    "company": { "id": "01M6...", "name": "US Navy", "website": null, "logo_url": null },
+    "social_links": {}, "business": {}, "custom_fields": [{ "label": "Languages", "value": "COBOL" }],
+    "visibility": { "card": { "mobile": false, "...": true }, "profile": { "...": true } },
+    "status": "active", "has_login": false
+  }
+}
+```
+
+More endpoints (designs, profiles, NFC, exports) are added in later phases and
+documented here.

@@ -33,41 +33,53 @@ class AssetService
 
     public function storeImage(User $user, UploadedFile $file, string $type = 'image'): UploadedAsset
     {
-        $manager = new ImageManager(new Driver);
-        try {
-            $image = $manager->read($file->getRealPath());
-        } catch (\Throwable) {
-            throw ValidationException::withMessages(['file' => 'The file could not be read as an image.']);
-        }
-
-        if ($image->width() > self::MAX_IMAGE_EDGE || $image->height() > self::MAX_IMAGE_EDGE) {
-            $image->scaleDown(self::MAX_IMAGE_EDGE, self::MAX_IMAGE_EDGE);
-        }
-
-        $mime = $file->getMimeType();
-        [$encoded, $ext, $mime] = match ($mime) {
-            'image/png' => [$image->toPng(), 'png', 'image/png'],
-            'image/webp' => [$image->toWebp(90), 'webp', 'image/webp'],
-            default => [$image->toJpeg(90), 'jpg', 'image/jpeg'],
-        };
-
-        $ulid = (string) Str::ulid();
-        $path = 'assets/'.$user->ulid.'/'.Str::lower($ulid).'.'.$ext;
-        Storage::disk('public')->put($path, (string) $encoded);
+        $stored = $this->storeImageFile($file, 'assets/'.$user->ulid, self::MAX_IMAGE_EDGE);
 
         $asset = $user->uploadedAssets()->create([
             'type' => in_array($type, self::IMAGE_TYPES, true) ? $type : 'image',
             'disk' => 'public',
-            'path' => $path,
+            'path' => $stored['path'],
             'original_name' => Str::limit($file->getClientOriginalName(), 200, ''),
-            'mime_type' => $mime,
-            'size' => strlen((string) $encoded),
-            'width' => $image->width(),
-            'height' => $image->height(),
+            'mime_type' => $stored['mime'],
+            'size' => $stored['size'],
+            'width' => $stored['width'],
+            'height' => $stored['height'],
         ]);
         $this->logger->log('asset.uploaded', $asset, 'Uploaded '.$asset->type.' "'.$asset->original_name.'"');
 
         return $asset;
+    }
+
+    /**
+     * Decode, scale down and re-encode an uploaded raster image onto the public disk.
+     *
+     * @return array{path: string, mime: string, size: int, width: int, height: int}
+     *
+     * @throws ValidationException
+     */
+    public function storeImageFile(UploadedFile $file, string $directory, int $maxEdge, string $attribute = 'file'): array
+    {
+        $manager = new ImageManager(new Driver);
+        try {
+            $image = $manager->read($file->getRealPath());
+        } catch (\Throwable) {
+            throw ValidationException::withMessages([$attribute => 'The file could not be read as an image.']);
+        }
+
+        if ($image->width() > $maxEdge || $image->height() > $maxEdge) {
+            $image->scaleDown($maxEdge, $maxEdge);
+        }
+
+        [$encoded, $ext, $mime] = match ($file->getMimeType()) {
+            'image/png' => [$image->toPng(), 'png', 'image/png'],
+            'image/webp' => [$image->toWebp(90), 'webp', 'image/webp'],
+            default => [$image->toJpeg(88), 'jpg', 'image/jpeg'],
+        };
+
+        $path = trim($directory, '/').'/'.Str::lower((string) Str::ulid()).'.'.$ext;
+        Storage::disk('public')->put($path, (string) $encoded);
+
+        return ['path' => $path, 'mime' => $mime, 'size' => strlen((string) $encoded), 'width' => $image->width(), 'height' => $image->height()];
     }
 
     public function storeFont(User $user, UploadedFile $file, string $family): UploadedAsset

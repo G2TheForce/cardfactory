@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
@@ -26,7 +27,7 @@ class Navigation
                 ['label' => 'Brand kits', 'route' => 'brand-kits.index', 'icon' => 'swatch-book', 'active' => 'brand-kits.*'],
             ]],
             ['label' => 'Customers', 'items' => [
-                ['label' => 'Customers', 'route' => 'customers.index', 'icon' => 'contact', 'active' => 'customers.*', 'can' => 'customers.view-any'],
+                ['label' => 'Customers', 'route' => 'customers.index', 'icon' => 'contact', 'active' => 'customers.*', 'policy' => ['viewAny', Customer::class]],
                 ['label' => 'Digital profiles', 'route' => 'profiles.index', 'icon' => 'smartphone', 'active' => 'profiles.*'],
                 ['label' => 'Bulk generator', 'route' => 'imports.index', 'icon' => 'layers', 'active' => 'imports.*', 'can' => 'imports.manage'],
             ]],
@@ -42,6 +43,7 @@ class Navigation
                 ['label' => 'Activity log', 'route' => 'admin.activity.index', 'icon' => 'scroll-text', 'active' => 'admin.activity.*', 'can' => 'activity.view'],
             ]],
             ['label' => 'Account', 'items' => [
+                ['label' => 'My card details', 'route' => 'my-details', 'icon' => 'id-card', 'active' => 'customers.edit', 'role' => 'customer'],
                 ['label' => 'Settings', 'route' => 'settings.profile', 'icon' => 'settings', 'active' => 'settings.*'],
             ]],
         ];
@@ -49,7 +51,9 @@ class Navigation
         return collect($sections)
             ->map(function (array $section) use ($user) {
                 $section['items'] = array_values(array_filter($section['items'], fn (array $item) => Route::has($item['route'])
-                    && (! isset($item['can']) || $user->can($item['can']))));
+                    && (! isset($item['can']) || $user->can($item['can']))
+                    && (! isset($item['policy']) || $user->can(...$item['policy']))
+                    && (! isset($item['role']) || $user->hasRole($item['role']))));
 
                 return $section;
             })
