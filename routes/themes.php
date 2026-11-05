@@ -15,7 +15,7 @@ Route::middleware('auth')->prefix('themes')->name('themes.')->controller(ThemeCo
     Route::get('/{theme}/customize', 'customize')->name('customize');
     Route::post('/{theme}/customize', 'storeCustomization')->name('customize.store');
     Route::put('/{theme}/customize', 'updateCustomization')->name('customize.update');
-    Route::post('/{theme}/preview', 'preview')->middleware('throttle:120,1')->name('preview');
+    Route::post('/{theme}/preview', 'preview')->middleware('throttle:previews')->name('preview');
     Route::get('/{theme}/preview/{side}.svg', 'previewSvg')->name('preview.svg');
 
     Route::post('/{theme}/duplicate', 'duplicate')->name('duplicate');

@@ -77,3 +77,9 @@
 
 /* Inline SVG card previews scale to their container */
 .card-svg > svg { display: block; width: 100%; height: auto; }
+
+/* Card design studio */
+@utility editor-heading { @apply mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500; }
+@utility editor-tile { @apply grid place-items-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:border-brand-300 hover:bg-brand-50/40 hover:text-gray-900; }
+@utility editor-tile-wide { @apply flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition hover:border-brand-300 hover:bg-brand-50/40; }
+.canvas-container { position: relative; }

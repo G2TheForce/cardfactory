@@ -16,6 +16,7 @@ use App\Models\NfcCard;
 use App\Models\QrCode;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\CardDesignService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -66,21 +67,32 @@ class DemoDataSeeder extends Seeder
             return NfcCard::factory()->create(['card_inventory_id' => $product->id, 'tag_type' => $product->tag_type]);
         });
 
-        $themeIds = CardTheme::pluck('id');
+        $themes = CardTheme::where('status', CardTheme::STATUS_PUBLISHED)->get();
 
         foreach ($customers as $i => $customer) {
             $created = Carbon::parse($customer->created_at);
 
             // 1-3 designs per customer
             foreach (range(1, mt_rand(1, 3)) as $n) {
-                CardDesign::factory()->create([
+                // Popular themes are picked more often (min of two random indexes).
+                $theme = $themes->isNotEmpty() && mt_rand(1, 5) > 1 ? $themes[min(mt_rand(0, $themes->count() - 1), mt_rand(0, $themes->count() - 1))] : null;
+                $design = CardDesign::factory()->create(array_merge([
                     'user_id' => $customer->user_id ?? $designer->id,
                     'designer_id' => $designer->id,
                     'customer_id' => $customer->id,
-                    'card_theme_id' => $themeIds->isNotEmpty() && mt_rand(1, 5) > 1 ? $themeIds[min(mt_rand(0, $themeIds->count() - 1), mt_rand(0, $themeIds->count() - 1))] : null,
                     'name' => $customer->full_name.' · '.['Primary', 'Event', 'Minimal'][$n - 1],
                     'created_at' => $created->copy()->addDays(mt_rand(0, 20)),
-                ]);
+                ], $theme ? [
+                    'card_theme_id' => $theme->id,
+                    'front' => $theme->front,
+                    'back' => $theme->back,
+                    'width_mm' => $theme->width_mm,
+                    'height_mm' => $theme->height_mm,
+                    'orientation' => $theme->orientation,
+                    'corner_radius_mm' => $theme->layout['corner_radius_mm'] ?? 0,
+                    'settings' => ['palette' => $theme->palette, 'fonts' => $theme->fonts, 'show_guides' => true],
+                ] : []));
+                app(CardDesignService::class)->syncElements($design);
             }
 
             if ($i % 4 === 3) {

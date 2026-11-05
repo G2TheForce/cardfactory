@@ -32,6 +32,10 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(60)->by($request->user()?->id ?: $request->ip()));
         RateLimiter::for('public', fn (Request $request) => Limit::perMinute(120)->by($request->ip()));
+        // Named limiters keep separate counters (plain throttle:x,y share one counter per user).
+        RateLimiter::for('previews', fn (Request $request) => Limit::perMinute(600)->by('previews:'.($request->user()?->id ?: $request->ip())));
+        RateLimiter::for('saves', fn (Request $request) => Limit::perMinute(60)->by('saves:'.($request->user()?->id ?: $request->ip())));
+        RateLimiter::for('uploads', fn (Request $request) => Limit::perMinute(30)->by('uploads:'.($request->user()?->id ?: $request->ip())));
 
         Event::listen(Login::class, function (Login $event) {
             if ($event->user instanceof User) {
