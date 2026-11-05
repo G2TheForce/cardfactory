@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Mail\ContactMessage;
 use App\Models\CardTheme;
+use App\Services\ThemeManagementService;
+use App\Support\Fonts;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -11,10 +13,15 @@ use Illuminate\View\View;
 
 class MarketingController extends Controller
 {
-    public function home(): View
+    public function home(ThemeManagementService $service): View
     {
+        $themes = CardTheme::published()->where('is_system', true)->orderBy('sort_order')->limit(6)->get();
+        $previews = $themes->mapWithKeys(fn (CardTheme $t) => [$t->id => $service->preview($t)]);
+
         return view('marketing.home', [
-            'themes' => CardTheme::published()->orderBy('sort_order')->limit(8)->get(),
+            'themes' => $themes,
+            'previews' => $previews,
+            'fontsUrl' => Fonts::googleUrl($previews->flatMap(fn ($p) => $p['fonts'])->all()),
             'plans' => config('smartcard.plans'),
         ]);
     }

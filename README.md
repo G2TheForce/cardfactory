@@ -4,7 +4,7 @@ A Laravel SaaS application for designing, generating, managing and exporting
 professional **NFC smart visiting cards**, their **QR codes** and the
 **digital business profiles** they link to.
 
-> Status: **Phase 1 (Foundation)** complete. See [Roadmap](#roadmap).
+> Status: **Phases 1–2** complete (foundation, theme management). See [Roadmap](#roadmap).
 
 ## Stack
 
@@ -45,7 +45,7 @@ GRANT ALL ON smartcard_studio.* TO 'smartcard'@'localhost';
 ```
 
 ```bash
-php artisan migrate --seed      # schema + roles + demo data (non-production only)
+php artisan migrate --seed      # schema, roles, 20 themes, demo data (non-production only)
 php artisan storage:link        # public uploads (avatars, logos)
 npm run build                   # or: npm run dev
 php artisan serve               # http://localhost:8000
@@ -81,6 +81,26 @@ php artisan db:seed --class=RolesAndPermissionsSeeder
 
 Super Admins can change what each role may do under **Administration → Roles & permissions**.
 Self-registered accounts get the `customer` role and a linked customer record.
+
+## Card scenes and themes
+
+Every card side (themes and, from Phase 3, designs) is stored as **scene JSON**,
+documented in [`app/Support/Scene/Scene.php`](app/Support/Scene/Scene.php):
+millimetre geometry, point font sizes, palette tokens such as `palette.primary`,
+and merge fields such as `{{full_name}}` and `{{profile_url}}`.
+
+- `SceneValidator` cleans and validates every scene before it is saved.
+- `CardRenderingService` renders a scene to a millimetre-accurate SVG
+  (backgrounds, gradients, text, shapes, lines, icons, social icons, images,
+  vector QR codes, patterns, bleed and safe-area guides). Previews use it now;
+  print exports will use the same renderer.
+- The 20 system themes live in [`app/Support/Themes/ThemeLibrary.php`](app/Support/Themes/ThemeLibrary.php)
+  and are synced by `php artisan db:seed --class=ThemeSeeder` (idempotent).
+
+Users can customise colours, fonts and corner radius with a live preview and
+**save as a new theme** (private to them), duplicate, favourite and reset to
+the original. Users with `themes.manage` can create and edit themes, including
+the scene JSON. Users with `themes.publish` can publish, unpublish and delete them.
 
 ## Configuration
 
@@ -141,7 +161,7 @@ docs/                     API and deployment documentation
 ## Roadmap
 
 1. **Foundation**: auth, roles, dashboard, base UI, full database schema ✅
-2. Theme management (20+ editable themes, gallery, favourites)
+2. **Theme management**: 20 editable themes, gallery, customiser, favourites, publishing ✅
 3. Visual card designer (canvas editor, layers, undo/redo, front/back)
 4. Customer management
 5. Digital business cards (public profiles, vCard, QR, NFC URLs)

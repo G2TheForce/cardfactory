@@ -38,3 +38,5 @@ Route::middleware(['auth'])->group(function () {
             ->middleware('permission:activity.view')->name('activity.index');
     });
 });
+
+require __DIR__.'/themes.php';

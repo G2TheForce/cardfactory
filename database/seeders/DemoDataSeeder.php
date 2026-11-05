@@ -7,6 +7,7 @@ use App\Models\CardDesign;
 use App\Models\CardExport;
 use App\Models\CardInventory;
 use App\Models\CardOrder;
+use App\Models\CardTheme;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\DigitalProfile;
@@ -65,6 +66,8 @@ class DemoDataSeeder extends Seeder
             return NfcCard::factory()->create(['card_inventory_id' => $product->id, 'tag_type' => $product->tag_type]);
         });
 
+        $themeIds = CardTheme::pluck('id');
+
         foreach ($customers as $i => $customer) {
             $created = Carbon::parse($customer->created_at);
 
@@ -74,6 +77,7 @@ class DemoDataSeeder extends Seeder
                     'user_id' => $customer->user_id ?? $designer->id,
                     'designer_id' => $designer->id,
                     'customer_id' => $customer->id,
+                    'card_theme_id' => $themeIds->isNotEmpty() && mt_rand(1, 5) > 1 ? $themeIds[min(mt_rand(0, $themeIds->count() - 1), mt_rand(0, $themeIds->count() - 1))] : null,
                     'name' => $customer->full_name.' · '.['Primary', 'Event', 'Minimal'][$n - 1],
                     'created_at' => $created->copy()->addDays(mt_rand(0, 20)),
                 ]);

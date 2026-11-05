@@ -12,7 +12,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call(RolesAndPermissionsSeeder::class);
+        $this->call([RolesAndPermissionsSeeder::class, ThemeSeeder::class]);
 
         if (! app()->isProduction() || config('smartcard.seed_demo_data')) {
             $this->call([

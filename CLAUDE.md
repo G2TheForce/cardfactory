@@ -9,3 +9,4 @@
 - Blade: use `@php ... @endphp` blocks, not inline `@php(...)` (mixing them breaks compilation).
 - Tailwind v4: shared component classes are `@utility` blocks in `resources/css/app.css`.
 - Run `./vendor/bin/pint` and `php artisan test` before committing.
+- Card sides are scene JSON (`app/Support/Scene/Scene.php`). Always pass scenes through `SceneValidator` before saving and render with `CardRenderingService` (mm units, palette tokens, merge fields).

@@ -28,6 +28,9 @@
     $showcase = ['midnight' => 'Corporate Executive', 'gold' => 'Luxury Black & Gold', 'aurora' => 'Modern Gradient', 'pearl' => 'Elegant White', 'ocean' => 'Technology', 'sage' => 'Medical Professional'];
 @endphp
 <x-layouts.marketing>
+    @push('head')
+        @if ($fontsUrl ?? null)<link rel="stylesheet" href="{{ $fontsUrl }}">@endif
+    @endpush
     {{-- Hero --}}
     <section class="relative overflow-hidden">
         <div class="absolute inset-0 -z-10 bg-[radial-gradient(60%_50%_at_70%_0%,rgba(99,102,241,0.15),transparent)]"></div>
@@ -86,12 +89,8 @@
                 @if ($themes->isNotEmpty())
                     @foreach ($themes as $theme)
                         <figure>
-                            @if ($theme->thumbnail_path)
-                                <img src="{{ Storage::disk('public')->url($theme->thumbnail_path) }}" alt="{{ $theme->name }} theme preview" class="aspect-[85.6/54] w-full rounded-2xl object-cover shadow-2xl" loading="lazy">
-                            @else
-                                <x-sample-card :variant="array_keys($showcase)[$loop->index % 6]" />
-                            @endif
-                            <figcaption class="mt-3 text-sm font-medium text-gray-300">{{ $theme->name }} <span class="text-gray-500">· {{ $theme->category }}</span></figcaption>
+                            <x-card-preview :svg="$previews[$theme->id]['front']" class="!rounded-2xl shadow-2xl" />
+                            <figcaption class="mt-3 text-sm font-medium text-gray-300">{{ $theme->name }}</figcaption>
                         </figure>
                     @endforeach
                 @else

@@ -74,3 +74,6 @@
 .table th { @apply table-th; }
 .table td { @apply table-td; }
 .table tbody tr { @apply table-tbody-tr; }
+
+/* Inline SVG card previews scale to their container */
+.card-svg > svg { display: block; width: 100%; height: auto; }

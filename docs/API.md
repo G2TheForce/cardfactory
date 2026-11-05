@@ -74,5 +74,35 @@ Customer accounts receive statistics for their own cards only.
 }
 ```
 
-More endpoints (themes, designs, customers, profiles, NFC, exports) are added
-in later phases and documented here.
+### `GET /themes` (ability: `read`)
+
+Published themes plus your own private themes, paginated (`per_page` max 100).
+
+Query parameters: `category`, `search`, `favorites=1`, `per_page`.
+
+```json
+{
+  "data": [{
+    "id": "01M6...", "name": "Corporate Executive", "slug": "corporate-executive",
+    "category": "corporate", "status": "published", "is_premium": false, "is_system": true, "is_favorite": false,
+    "size": { "width_mm": 85.6, "height_mm": 54, "orientation": "landscape" },
+    "palette": { "primary": "#0f2747", "secondary": "#1e3a5f", "accent": "#c9a227", "background": "#ffffff", "text": "#0f172a", "muted": "#64748b" },
+    "fonts": { "heading": "Montserrat", "body": "Inter" },
+    "layout": { "archetype": "executive", "bleed_mm": 3, "safe_mm": 3, "corner_radius_mm": 0 },
+    "preview": { "front_svg": "https://.../themes/01M6.../preview/front.svg", "back_svg": "..." }
+  }],
+  "links": {}, "meta": {}
+}
+```
+
+### `GET /themes/{id}` (ability: `read`)
+
+Same fields plus the full editable `front` and `back` scenes (see
+`app/Support/Scene/Scene.php` for the scene format) and `based_on`.
+
+### `POST /themes/{id}/favorite` (ability: `write`)
+
+Toggles the theme in your favourites. Returns `{ "data": { "favorite": true } }`.
+
+More endpoints (designs, customers, profiles, NFC, exports) are added in later
+phases and documented here.
