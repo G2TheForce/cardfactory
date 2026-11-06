@@ -2,6 +2,7 @@
 
 namespace App\Services\Export;
 
+use App\Support\Executable;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -22,22 +23,30 @@ class ChromeRenderer
     public function binary(): ?string
     {
         $configured = config('smartcard.export.chrome_binary');
-        $candidates = $configured ? [$configured] : ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser', '/opt/pw-browsers/chromium/chrome-linux/chrome'];
-        foreach ($candidates as $candidate) {
-            if (str_contains($candidate, '/')) {
-                if (is_file($candidate) && is_executable($candidate)) {
-                    return $candidate;
-                }
 
-                continue;
+        return Executable::find($configured ? [$configured] : self::defaultCandidates());
+    }
+
+    /** @return list<string> */
+    public static function defaultCandidates(): array
+    {
+        $candidates = ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser', '/opt/pw-browsers/chromium/chrome-linux/chrome',
+            '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'];
+        if (Executable::onWindows()) {
+            foreach ([getenv('ProgramFiles'), getenv('ProgramFiles(x86)'), getenv('LOCALAPPDATA')] as $base) {
+                if ($base) {
+                    $candidates[] = $base.'\\Google\\Chrome\\Application\\chrome.exe';
+                }
             }
-            $path = trim((string) @shell_exec('command -v '.escapeshellarg($candidate).' 2>/dev/null'));
-            if ($path !== '') {
-                return $path;
+            foreach ([getenv('ProgramFiles(x86)'), getenv('ProgramFiles')] as $base) {
+                if ($base) {
+                    $candidates[] = $base.'\\Microsoft\\Edge\\Application\\msedge.exe';
+                }
             }
+            $candidates[] = 'chrome.exe';
         }
 
-        return null;
+        return $candidates;
     }
 
     /** Render HTML to a PDF file. Page size comes from the HTML's CSS @page rule. */
@@ -78,7 +87,7 @@ class ChromeRenderer
             '--host-resolver-rules=MAP * ~NOTFOUND', '--proxy-server=http://0.0.0.0:9',
             '--run-all-compositor-stages-before-draw', '--virtual-time-budget='.(int) config('smartcard.export.font_wait_ms', 3000)],
             config('smartcard.export.chrome_no_sandbox') ? ['--no-sandbox'] : [],
-            $args, ['file://'.$page]);
+            $args, [Executable::fileUrl($page)]);
 
         try {
             @unlink($outPath);
