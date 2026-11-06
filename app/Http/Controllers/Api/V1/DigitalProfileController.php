@@ -65,11 +65,11 @@ class DigitalProfileController extends Controller
 
     public function update(ProfileRequest $request, DigitalProfile $profile): DigitalProfileResource
     {
-        $data = $request->safe()->except(['cover', 'portfolio', 'card_design']);
+        $data = $request->safe()->except(['cover', 'background_image', 'portfolio', 'card_design']);
         if ($request->has('card_design')) {
             $data['card_design'] = $request->input('card_design') ? CardDesign::where('ulid', $request->input('card_design'))->firstOrFail() : null;
         }
-        $this->profiles->update($profile, $data, $request->user(), ['cover' => $request->file('cover'), 'portfolio' => $request->file('portfolio', [])]);
+        $this->profiles->update($profile, $data, $request->user(), ['cover' => $request->file('cover'), 'background_image' => $request->file('background_image'), 'portfolio' => $request->file('portfolio', [])]);
 
         return new DigitalProfileResource($profile->refresh()->load('customer'));
     }

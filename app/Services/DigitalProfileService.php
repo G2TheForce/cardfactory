@@ -92,13 +92,29 @@ class DigitalProfileService
                 } elseif ($themeChanged) {
                     $settings['accent'] = ProfileThemes::get($profile->profile_theme)['accent'];
                 }
-                foreach (['button_style', 'headline', 'social_style', 'header_style', 'font', 'background'] as $key) {
+                foreach (['button_style', 'headline', 'social_style', 'header_style', 'font', 'background', 'card_style', 'effect'] as $key) {
                     if (array_key_exists($key, $data)) {
                         $settings[$key] = $data[$key] ?: null;
                     }
                 }
                 if ($themeChanged && ! array_key_exists('background', $data)) {
                     $settings['background'] = null;
+                }
+                if (array_key_exists('glow', $data)) {
+                    $settings['glow'] = $data['glow'] === null || $data['glow'] === '' ? null : (bool) $data['glow'];
+                }
+                foreach (['background_overlay', 'background_blur'] as $key) {
+                    if (array_key_exists($key, $data)) {
+                        $settings[$key] = (int) $data[$key];
+                    }
+                }
+                if (array_key_exists('social_links', $data) && $profile->customer) {
+                    $links = collect((array) $data['social_links'])
+                        ->only(array_keys(CustomerFields::SOCIAL))
+                        ->map(fn ($v, $network) => SocialStatsService::normaliseLink($network, $v))
+                        ->filter()->all();
+                    $profile->customer->forceFill(['social_links' => $links ?: null])->save();
+                    $profile->unsetRelation('customer');
                 }
                 if (array_key_exists('social_manual', $data)) {
                     $counts = $settings['social_counts'] ?? [];
@@ -142,6 +158,20 @@ class DigitalProfileService
                 if (($cover = $files['cover'] ?? null) instanceof UploadedFile) {
                     $old = $settings['cover_path'] ?? null;
                     $settings['cover_path'] = $stored[] = $this->assets->storeImageFile($cover, 'profiles/'.$profile->ulid, 1600, 'cover')['path'];
+                    if ($old) {
+                        DB::afterCommit(fn () => Storage::disk('public')->delete($old));
+                    }
+                }
+
+                // Page background image
+                if (! empty($data['remove_background_image']) && ! empty($settings['background_image_path'])) {
+                    $old = $settings['background_image_path'];
+                    $settings['background_image_path'] = null;
+                    DB::afterCommit(fn () => Storage::disk('public')->delete($old));
+                }
+                if (($bgImage = $files['background_image'] ?? null) instanceof UploadedFile) {
+                    $old = $settings['background_image_path'] ?? null;
+                    $settings['background_image_path'] = $stored[] = $this->assets->storeImageFile($bgImage, 'profiles/'.$profile->ulid, 2000, 'background')['path'];
                     if ($old) {
                         DB::afterCommit(fn () => Storage::disk('public')->delete($old));
                     }
@@ -281,6 +311,9 @@ class DigitalProfileService
             'company_logo' => $company?->logo_path ? $disk->url($company->logo_path) : null,
             'photo' => $show('photo') && $c->profile_photo_path ? $disk->url($c->profile_photo_path) : null,
             'cover' => $settings['cover_path'] ? $disk->url($settings['cover_path']) : null,
+            'background_image' => $settings['background_image_path'] ? $disk->url($settings['background_image_path']) : null,
+            'background_overlay' => max(0, min(90, (int) $settings['background_overlay'])),
+            'background_blur' => max(0, min(20, (int) $settings['background_blur'])),
             'initials' => collect(preg_split('/\s+/', trim($c->full_name)) ?: [])->filter()->map(fn ($p) => mb_substr($p, 0, 1))->take(2)->implode(''),
             'intro' => $c->introduction,
             'mobile' => $mobile,
@@ -334,7 +367,7 @@ class DigitalProfileService
 
             return [
                 'key' => $key, 'label' => $label, 'url' => $links[$key],
-                'verb' => $net['verb'], 'color' => $net['color'], 'background' => $net['gradient'] ?? $net['color'],
+                'verb' => $net['verb'], 'color' => $net['color'], 'background' => $net['gradient'] ?? $net['color'], 'text' => $net['text'] ?? '#ffffff',
                 'count' => $count, 'count_label' => $count !== null ? SocialStatsService::format($count).' '.$net['noun'] : null,
             ];
         })->filter()->values()->all();
@@ -424,6 +457,12 @@ class DigitalProfileService
             'header_style' => null,
             'font' => null,
             'background' => null,
+            'background_image_path' => null,
+            'background_overlay' => 40,
+            'background_blur' => 0,
+            'card_style' => null,
+            'effect' => null,
+            'glow' => null,
         ];
     }
 

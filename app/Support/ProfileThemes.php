@@ -54,6 +54,18 @@ final class ProfileThemes
             'header' => 'hero', 'font' => 'sans', 'accent' => '#06b6d4', 'gradient_to' => '#a855f7',
             'colors' => ['bg' => '#09090b', 'surface' => '#18181b', 'text' => '#f4f4f5', 'muted' => '#a1a1aa', 'border' => '#27272a'],
         ],
+        'aurora' => [
+            'category' => 'personal', 'name' => 'Aurora', 'description' => 'Glowing northern-lights backdrop behind frosted glass.',
+            'header' => 'centered', 'font' => 'sans', 'accent' => '#8b5cf6', 'gradient_to' => '#22d3ee',
+            'card_style' => 'glass', 'effect' => 'aurora', 'glow' => true,
+            'colors' => ['bg' => '#0b0b1e', 'surface' => '#16163a', 'text' => '#eef2ff', 'muted' => '#a5b4fc', 'border' => '#2e2e5c'],
+        ],
+        'cyber' => [
+            'category' => 'personal', 'name' => 'Cyber', 'description' => 'Neon green on a dark grid. Futuristic and loud.',
+            'header' => 'centered', 'font' => 'mono', 'accent' => '#22c55e', 'gradient_to' => '#06b6d4',
+            'card_style' => 'outline', 'effect' => 'grid', 'glow' => true,
+            'colors' => ['bg' => '#030712', 'surface' => '#0b1220', 'text' => '#e2e8f0', 'muted' => '#94a3b8', 'border' => '#1e293b'],
+        ],
         // Professional: consultants, executives, companies.
         'executive' => [
             'category' => 'professional', 'name' => 'Executive', 'description' => 'Navy and serif, quietly confident.',
@@ -64,6 +76,18 @@ final class ProfileThemes
             'category' => 'professional', 'name' => 'Corporate', 'description' => 'Trustworthy blue banner with company logo.',
             'header' => 'cover', 'font' => 'sans', 'accent' => '#0369a1', 'gradient_to' => '#0ea5e9',
             'colors' => ['bg' => '#f0f9ff', 'surface' => '#ffffff', 'text' => '#0c4a6e', 'muted' => '#64748b', 'border' => '#e0f2fe'],
+        ],
+        'glass' => [
+            'category' => 'professional', 'name' => 'Glass', 'description' => 'Soft gradient light with frosted glass panels.',
+            'header' => 'centered', 'font' => 'sans', 'accent' => '#2563eb', 'gradient_to' => '#7c3aed',
+            'card_style' => 'glass', 'effect' => 'aurora', 'glow' => false,
+            'colors' => ['bg' => '#eef2ff', 'surface' => '#ffffff', 'text' => '#0f172a', 'muted' => '#64748b', 'border' => '#dbe4ff'],
+        ],
+        'carbon' => [
+            'category' => 'professional', 'name' => 'Carbon', 'description' => 'Sleek dark graphite with a fine grid and gold accent.',
+            'header' => 'centered', 'font' => 'sans', 'accent' => '#d4a72c', 'gradient_to' => '#78350f',
+            'card_style' => 'solid', 'effect' => 'grid', 'glow' => false,
+            'colors' => ['bg' => '#0c0c0e', 'surface' => '#17171b', 'text' => '#f4f4f5', 'muted' => '#a1a1aa', 'border' => '#27272a'],
         ],
         'studio' => [
             'category' => 'professional', 'name' => 'Studio', 'description' => 'Graphite and white for designers and agencies.',
@@ -78,6 +102,10 @@ final class ProfileThemes
     ];
 
     public const SOCIAL_STYLES = ['buttons' => 'Follow buttons', 'icons' => 'Icons only'];
+
+    public const CARD_STYLES = ['solid' => 'Solid', 'glass' => 'Frosted glass', 'outline' => 'Outline'];
+
+    public const EFFECTS = ['none' => 'None', 'aurora' => 'Aurora glow', 'grid' => 'Tech grid', 'dots' => 'Dots', 'mesh' => 'Gradient mesh'];
 
     public const HEADER_STYLES = ['cover' => 'Banner', 'hero' => 'Full gradient', 'centered' => 'Plain'];
 
@@ -132,6 +160,10 @@ final class ProfileThemes
                 ? ['bg' => $bg, 'surface' => self::mix($bg, '#ffffff', 0.08), 'text' => '#f4f4f5', 'muted' => '#a1a1aa', 'border' => self::mix($bg, '#ffffff', 0.16)]
                 : ['bg' => $bg, 'surface' => '#ffffff', 'text' => '#111827', 'muted' => '#6b7280', 'border' => self::mix($bg, '#000000', 0.1)];
         }
+        $theme['card_style'] = isset(self::CARD_STYLES[$settings['card_style'] ?? '']) ? $settings['card_style'] : ($theme['card_style'] ?? 'solid');
+        $theme['effect'] = isset(self::EFFECTS[$settings['effect'] ?? '']) ? $settings['effect'] : ($theme['effect'] ?? 'none');
+        $theme['glow'] = isset($settings['glow']) ? (bool) $settings['glow'] : ($theme['glow'] ?? false);
+        $theme['dark'] = self::isDark($theme['colors']['bg']);
         $theme['font_stack'] = self::FONTS[$theme['font']]['stack'] ?? self::FONTS['sans']['stack'];
 
         return $theme;

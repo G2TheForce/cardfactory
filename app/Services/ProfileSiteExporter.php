@@ -33,6 +33,7 @@ class ProfileSiteExporter
         $p = $this->profiles->publicData($profile);
         $p['photo'] = $this->image($profile->customer->profile_photo_path, $p['photo'], 'photo', $files);
         $p['cover'] = $this->image($this->profiles->settings($profile)['cover_path'], $p['cover'], 'cover', $files);
+        $p['background_image'] = $this->image($this->profiles->settings($profile)['background_image_path'], $p['background_image'], 'background', $files);
         $p['company_logo'] = $this->image($profile->customer->company?->logo_path, $p['company_logo'], 'logo', $files);
         $p['portfolio'] = array_values(array_filter(array_map(function ($item) use (&$files) {
             $url = $this->image($item['path'], $item['url'], 'portfolio-'.$item['id'], $files);
