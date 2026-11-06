@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\DigitalProfile;
 use App\Models\QrCode;
 use App\Models\User;
+use App\Services\Social\SocialStatsService;
 use App\Support\CustomerFields;
 use App\Support\ProfileCodes;
 use App\Support\ProfileThemes;
@@ -49,7 +50,7 @@ class DigitalProfileService
                 'slug' => $slug,
                 'card_identifier' => ProfileCodes::profileIdentifier(),
                 'profile_theme' => $theme,
-                'layout' => ProfileThemes::defaultLayout(),
+                'layout' => ProfileThemes::defaultLayout($theme),
                 'settings' => $this->defaultSettings($theme),
                 'is_active' => true,
                 'published_at' => now(),
@@ -91,12 +92,27 @@ class DigitalProfileService
                 } elseif ($themeChanged) {
                     $settings['accent'] = ProfileThemes::get($profile->profile_theme)['accent'];
                 }
-                foreach (['button_style', 'headline'] as $key) {
+                foreach (['button_style', 'headline', 'social_style', 'header_style', 'font', 'background'] as $key) {
                     if (array_key_exists($key, $data)) {
                         $settings[$key] = $data[$key] ?: null;
                     }
                 }
-                foreach (['allow_indexing', 'show_save_contact', 'show_qr', 'map_embed'] as $key) {
+                if ($themeChanged && ! array_key_exists('background', $data)) {
+                    $settings['background'] = null;
+                }
+                if (array_key_exists('social_manual', $data)) {
+                    $counts = $settings['social_counts'] ?? [];
+                    foreach ((array) $data['social_manual'] as $network => $value) {
+                        if (! isset(CustomerFields::SOCIAL[$network])) {
+                            continue;
+                        }
+                        $counts[$network] = ($counts[$network] ?? ['count' => null, 'fetched_at' => null, 'error' => null])
+                            + ['count' => null, 'fetched_at' => null, 'error' => null];
+                        $counts[$network]['manual'] = $value === null || $value === '' ? null : (int) $value;
+                    }
+                    $settings['social_counts'] = $counts;
+                }
+                foreach (['allow_indexing', 'show_save_contact', 'show_qr', 'map_embed', 'show_follower_counts'] as $key) {
                     if (array_key_exists($key, $data)) {
                         $settings[$key] = (bool) $data[$key];
                     }
@@ -239,8 +255,8 @@ class DigitalProfileService
         $company = $c->company;
         $show = fn (string $field) => CustomerFields::visible($c->visibility, 'profile', $field);
         $disk = Storage::disk('public');
-        $theme = ProfileThemes::get($profile->profile_theme);
         $settings = $this->settings($profile);
+        $theme = ProfileThemes::resolve($profile->profile_theme, $settings);
         $digits = fn (?string $v) => $v ? preg_replace('/[^\d+]/', '', $v) : null;
 
         $mobile = $show('mobile') ? $c->mobile : null;
@@ -279,7 +295,8 @@ class DigitalProfileService
             'address' => $address ?: null,
             'map_url' => $mapQuery ? ($c->map_url ?: 'https://www.google.com/maps/search/?api=1&query='.urlencode($mapQuery)) : null,
             'map_embed' => $mapQuery && $settings['map_embed'] ? 'https://www.google.com/maps?q='.urlencode($mapQuery).'&output=embed' : null,
-            'social' => $show('social_links') ? collect(CustomerFields::SOCIAL)->map(fn ($label, $key) => ($c->social_links[$key] ?? null) ? ['key' => $key, 'label' => $label, 'url' => $c->social_links[$key]] : null)->filter()->values()->all() : [],
+            'social' => $show('social_links') ? $this->socialLinks($c->social_links ?? [], $settings) : [],
+            'social_style' => $settings['social_style'],
             'links' => collect([
                 $c->portfolio_url ? ['label' => 'Portfolio', 'url' => $c->portfolio_url, 'icon' => 'briefcase'] : null,
                 $c->booking_url ? ['label' => 'Book a meeting', 'url' => $c->booking_url, 'icon' => 'calendar-check'] : null,
@@ -300,6 +317,27 @@ class DigitalProfileService
             'allow_indexing' => $settings['allow_indexing'],
             'sections' => collect(ProfileThemes::normaliseLayout($profile->layout))->where('enabled', true)->pluck('key')->all(),
         ];
+    }
+
+    /**
+     * Social links in display order with button wording, brand colour and the
+     * follower count to show (when counts are switched on and known).
+     */
+    private function socialLinks(array $links, array $settings): array
+    {
+        return collect(CustomerFields::SOCIAL)->map(function ($label, $key) use ($links, $settings) {
+            if (! ($links[$key] ?? null)) {
+                return null;
+            }
+            $net = SocialStatsService::NETWORKS[$key] ?? ['verb' => 'Follow', 'noun' => 'followers', 'color' => null];
+            $count = $settings['show_follower_counts'] ? SocialStatsService::displayCount($settings['social_counts'] ?? [], $key) : null;
+
+            return [
+                'key' => $key, 'label' => $label, 'url' => $links[$key],
+                'verb' => $net['verb'], 'color' => $net['color'], 'background' => $net['gradient'] ?? $net['color'],
+                'count' => $count, 'count_label' => $count !== null ? SocialStatsService::format($count).' '.$net['noun'] : null,
+            ];
+        })->filter()->values()->all();
     }
 
     /** Settings with defaults filled in. */
@@ -379,6 +417,13 @@ class DigitalProfileService
             'allow_indexing' => false,
             'ctas' => [],
             'portfolio' => [],
+            'social_style' => 'buttons',
+            'show_follower_counts' => true,
+            'social_counts' => [],
+            // Overrides on top of the theme (null = use the theme's own).
+            'header_style' => null,
+            'font' => null,
+            'background' => null,
         ];
     }
 

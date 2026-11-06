@@ -176,10 +176,39 @@ What runs in the background:
 | Mail (password reset, contact form) | `default` queue |
 | `exports:prune` | daily: deletes export files after `EXPORT_RETENTION_DAYS` |
 | `imports:prune` | daily: deletes unfinished bulk runs and their spreadsheets after `IMPORT_RETENTION_DAYS` |
+| `profiles:refresh-social-counts` | daily at 04:30: follower counts for live profiles (see below) |
 | `queue:prune-failed`, `auth:clear-resets`, `sanctum:prune-expired` | housekeeping |
 
 If exports stay "queued", the worker is not running: `supervisorctl status` and
 `storage/logs/worker.log` tell you why.
+
+### Follower counts on digital profiles
+
+Profiles can show "12.4K followers" on their Follow / Subscribe buttons. Counts
+are fetched once a day from each network's official API when its key is set in
+`.env`, and can always be typed in by hand on the profile's **Social** tab.
+
+| Network | What to set | Notes |
+| ------- | ----------- | ----- |
+| YouTube | `YOUTUBE_API_KEY` | Free. Google Cloud console > enable "YouTube Data API v3" > Credentials > API key. |
+| GitHub | nothing (`GITHUB_TOKEN` optional) | Public API; a token raises the rate limit. |
+| X (Twitter) | `X_BEARER_TOKEN` | User lookups need a paid X API plan. |
+| Instagram | `META_ACCESS_TOKEN`, `INSTAGRAM_BUSINESS_ACCOUNT_ID` | Uses business discovery, so it only reads business and creator accounts. Your own account must be an Instagram business account linked to a Facebook page. |
+| Facebook | `META_ACCESS_TOKEN` | Facebook pages only, not personal profiles. |
+| LinkedIn, TikTok | not available | No public follower API. Type the count in. |
+
+Counts are stored on the profile, so the public page never waits on these APIs,
+and a failed fetch keeps the last known count.
+
+### Publishing a profile as a static website
+
+**Digital profiles > a profile > Publish as a website** downloads a ZIP with
+`index.html`, the vCard, styles, fonts and images. Upload the folder to any
+static host (Netlify Drop, GitHub Pages, Cloudflare Pages or plain hosting); a
+README inside has the steps. It needs nothing from this server, so it works even
+when the app only runs locally. Enter the site address before downloading so the
+QR code and share button point at it. Visits to an exported site are not counted
+in Analytics, and its follower counts are as of the download.
 
 ## 7. Updating
 

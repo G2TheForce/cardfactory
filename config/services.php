@@ -35,4 +35,23 @@ return [
         ],
     ],
 
+    // Follower counts on digital profiles (App\Services\Social\SocialStatsService).
+    'youtube' => [
+        'key' => env('YOUTUBE_API_KEY'),
+    ],
+
+    'github' => [
+        'token' => env('GITHUB_TOKEN'),
+    ],
+
+    'x' => [
+        'bearer_token' => env('X_BEARER_TOKEN'),
+    ],
+
+    'meta' => [
+        'access_token' => env('META_ACCESS_TOKEN'),
+        'instagram_business_id' => env('INSTAGRAM_BUSINESS_ACCOUNT_ID'),
+        'graph_version' => env('META_GRAPH_VERSION', 'v21.0'),
+    ],
+
 ];

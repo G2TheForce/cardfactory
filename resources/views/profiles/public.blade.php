@@ -2,6 +2,8 @@
     use App\Services\QRCodeService;
     use App\Support\Scene\IconLibrary;
 
+    // Set when building a static site (ProfileSiteExporter): relative asset URLs, no tracking.
+    $export ??= null;
     $t = $p['theme'];
     $radius = ['rounded' => '0.875rem', 'pill' => '9999px', 'square' => '0.375rem'][$p['button_style']] ?? '0.875rem';
     $serif = $t['font'] === 'serif';
@@ -29,11 +31,17 @@
     <meta property="og:type" content="profile">
     <meta property="og:title" content="{{ $p['name'] }}">
     <meta property="og:description" content="{{ $subtitle ?: 'Digital business card' }}">
-    <meta property="og:url" content="{{ $urls['public'] }}">
+    @if ($urls['public'])<meta property="og:url" content="{{ $urls['public'] }}">@endif
     @if ($p['photo'])<meta property="og:image" content="{{ $p['photo'] }}">@endif
-    <link rel="canonical" href="{{ $urls['public'] }}">
-    <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @if ($urls['public'])<link rel="canonical" href="{{ $urls['public'] }}">@endif
+    @if ($export)
+        <link rel="icon" href="favicon.svg" type="image/svg+xml">
+        @if ($export['css'])<link rel="stylesheet" href="{{ $export['css'] }}">@endif
+        @if ($export['js'])<script type="module" src="{{ $export['js'] }}"></script>@endif
+    @else
+        <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
+        @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @endif
     <style>
         :root {
             --bg: {{ $t['colors']['bg'] }}; --surface: {{ $t['colors']['surface'] }}; --text: {{ $t['colors']['text'] }};
@@ -48,8 +56,10 @@
         .pf-chip { background: color-mix(in srgb, var(--accent) 10%, var(--surface)); color: var(--text); }
         .pf-icon { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); color: var(--accent); }
         .pf-row + .pf-row { border-top: 1px solid var(--border); }
-        .pf-hero { background: linear-gradient(140deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #111827)); }
-        @if ($serif) .pf-heading { font-family: Georgia, 'Times New Roman', serif; letter-spacing: -0.01em; } @endif
+        .pf-hero { background: linear-gradient(140deg, var(--accent), {{ isset($t['gradient_to']) ? $t['gradient_to'] : 'color-mix(in srgb, var(--accent) 55%, #111827)' }}); }
+        @if ($serif) .pf-heading { font-family: {!! $t['font_stack'] !!}; letter-spacing: -0.01em; } @elseif ($t['font'] !== 'sans') body { font-family: {!! $t['font_stack'] !!}; } @endif
+        .pf-social { border-radius: var(--radius); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14); }
+        .pf-social:hover { filter: brightness(1.08); }
     </style>
 </head>
 <body class="min-h-screen antialiased" x-data="{ qr: false, photo: null, shared: false }">
@@ -187,17 +197,35 @@
 
                     @case('social')
                         @if ($p['social'])
-                            <section class="pf-card p-5">
-                                <h2 class="pf-heading text-base font-semibold">Follow</h2>
-                                <div class="mt-3 flex flex-wrap gap-2.5">
+                            @if ($p['social_style'] === 'buttons')
+                                <section class="space-y-2.5" aria-label="Social media">
                                     @foreach ($p['social'] as $s)
-                                        <a href="{{ $s['url'] }}" target="_blank" rel="noopener me" data-track="social" data-target="{{ $s['key'] }}" aria-label="{{ $s['label'] }}" title="{{ $s['label'] }}"
-                                           class="pf-icon grid h-12 w-12 place-items-center rounded-2xl transition hover:scale-105">
-                                            <x-dynamic-component :component="'lucide-'.(IconLibrary::SOCIAL[$s['key']] ?? 'link')" class="h-5 w-5" />
+                                        <a href="{{ $s['url'] }}" target="_blank" rel="noopener me" data-track="social" data-target="{{ $s['key'] }}"
+                                           class="pf-social flex items-center gap-3 px-4 py-3 shadow-sm transition" style="background: {{ $s['background'] }}">
+                                            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/15">
+                                                <x-dynamic-component :component="'lucide-'.(IconLibrary::SOCIAL[$s['key']] ?? 'link')" class="h-5 w-5" />
+                                            </span>
+                                            <span class="min-w-0 flex-1">
+                                                <span class="block text-[15px] font-semibold leading-tight">{{ $s['verb'] }} on {{ $s['label'] }}</span>
+                                                @if ($s['count_label'])<span class="block text-xs text-white/80">{{ $s['count_label'] }}</span>@endif
+                                            </span>
+                                            <x-lucide-chevron-right class="h-4 w-4 shrink-0 text-white/70" />
                                         </a>
                                     @endforeach
-                                </div>
-                            </section>
+                                </section>
+                            @else
+                                <section class="pf-card p-5">
+                                    <h2 class="pf-heading text-base font-semibold">Follow</h2>
+                                    <div class="mt-3 flex flex-wrap gap-2.5">
+                                        @foreach ($p['social'] as $s)
+                                            <a href="{{ $s['url'] }}" target="_blank" rel="noopener me" data-track="social" data-target="{{ $s['key'] }}" aria-label="{{ $s['label'] }}" title="{{ $s['label'] }}{{ $s['count_label'] ? ' · '.$s['count_label'] : '' }}"
+                                               class="pf-icon grid h-12 w-12 place-items-center rounded-2xl transition hover:scale-105">
+                                                <x-dynamic-component :component="'lucide-'.(IconLibrary::SOCIAL[$s['key']] ?? 'link')" class="h-5 w-5" />
+                                            </a>
+                                        @endforeach
+                                    </div>
+                                </section>
+                            @endif
                         @endif
                         @break
 
@@ -280,7 +308,7 @@
             {{-- Share --}}
             <section class="flex gap-2.5 pt-1">
                 <button type="button" class="pf-card flex flex-1 items-center justify-center gap-2 px-4 py-3 text-sm font-semibold"
-                        @click="navigator.share ? navigator.share({ title: @js($p['name']), url: @js($urls['public']) }).catch(() => {}) : navigator.clipboard.writeText(@js($urls['public'])).then(() => { shared = true; setTimeout(() => shared = false, 2000) })">
+                        @click="navigator.share ? navigator.share({ title: @js($p['name']), url: (@js($urls['public']) || location.href) }).catch(() => {}) : navigator.clipboard.writeText((@js($urls['public']) || location.href)).then(() => { shared = true; setTimeout(() => shared = false, 2000) })">
                     <x-lucide-share-2 class="h-4 w-4" /> <span x-text="shared ? 'Link copied' : 'Share'">Share</span>
                 </button>
                 @if ($qrSvg)
@@ -292,7 +320,11 @@
         </div>
 
         <footer class="pf-muted px-6 pb-8 pt-8 text-center text-xs">
-            <a href="{{ route('home') }}" class="hover:underline">Made with {{ config('app.name') }}</a>
+            @if ($export)
+                Made with {{ config('app.name') }}
+            @else
+                <a href="{{ route('home') }}" class="hover:underline">Made with {{ config('app.name') }}</a>
+            @endif
         </footer>
     </div>
 </main>
@@ -313,7 +345,7 @@
     <p class="text-sm text-white/90" x-text="photo?.caption"></p>
 </div>
 
-@unless ($preview)
+@unless ($preview || $export)
     <script>
         document.addEventListener('click', function (e) {
             var a = e.target.closest('[data-track]');

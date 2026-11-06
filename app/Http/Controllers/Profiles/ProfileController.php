@@ -12,12 +12,15 @@ use App\Policies\CustomerPolicy;
 use App\Policies\DigitalProfilePolicy;
 use App\Services\DigitalProfileService;
 use App\Services\NFCManagementService;
+use App\Services\ProfileSiteExporter;
 use App\Services\QRCodeService;
+use App\Services\Social\SocialStatsService;
 use App\Support\ProfileThemes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ProfileController extends Controller
 {
@@ -137,6 +140,7 @@ class ProfileController extends Controller
             'settings' => $this->profiles->settings($profile),
             'layout' => ProfileThemes::normaliseLayout($profile->layout),
             'themes' => ProfileThemes::THEMES,
+            'social' => app(SocialStatsService::class),
             'designs' => CardDesign::where('customer_id', $profile->customer_id)->latest('updated_at')->get(['id', 'ulid', 'name']),
         ]);
     }
@@ -160,6 +164,31 @@ class ProfileController extends Controller
         ]);
 
         return redirect()->route('profiles.edit', [$profile, 'tab' => $request->input('_tab')])->with('success', 'Profile saved.');
+    }
+
+    /** Download the profile as a static website to host anywhere. */
+    public function exportSite(Request $request, DigitalProfile $profile, ProfileSiteExporter $exporter): BinaryFileResponse
+    {
+        $this->authorize('update', $profile);
+        $data = $request->validate(['site_url' => ['nullable', 'url:https,http', 'max:200']], [
+            'site_url.url' => 'Enter the full address, like https://jane.netlify.app.',
+        ]);
+        $path = $exporter->export($profile, $data['site_url'] ?? null);
+
+        return response()->download($path, $exporter->filename($profile), ['Content-Type' => 'application/zip'])->deleteFileAfterSend();
+    }
+
+    /** Fetch follower counts now instead of waiting for the daily refresh. */
+    public function refreshSocial(DigitalProfile $profile, SocialStatsService $stats): RedirectResponse
+    {
+        $this->authorize('update', $profile);
+        $counts = $stats->refresh($profile);
+        $failed = collect($counts)->filter(fn ($c) => $c['error'])->count();
+
+        return redirect()->route('profiles.edit', [$profile, 'tab' => 'social'])->with(
+            $failed ? 'error' : 'success',
+            $failed ? "Counts refreshed, but {$failed} network(s) couldn't be read. See the notes below." : 'Follower counts refreshed.'
+        );
     }
 
     public function destroy(Request $request, DigitalProfile $profile): RedirectResponse

@@ -32,6 +32,8 @@ Route::middleware('auth')->group(function () {
             Route::put('/{profile}', 'update')->middleware('throttle:uploads')->name('update');
             Route::delete('/{profile}', 'destroy')->name('destroy');
             Route::get('/{profile}/preview', 'preview')->name('preview');
+            Route::post('/{profile}/site', 'exportSite')->middleware('throttle:saves')->name('site.export');
+            Route::post('/{profile}/social/refresh', 'refreshSocial')->middleware('throttle:social-refresh')->name('social.refresh');
         });
 
         Route::put('/{profile}/qr', [QrController::class, 'update'])->middleware('throttle:saves')->name('qr.update');
