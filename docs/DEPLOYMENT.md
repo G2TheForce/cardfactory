@@ -216,7 +216,8 @@ in Analytics, and its follower counts are as of the download.
 sudo -u deploy /var/www/smartcard-studio/current/deploy/deploy.sh main
 ```
 
-The script builds a new release next to the running one, runs migrations, caches config,
+The script builds a new release next to the running one, runs migrations, syncs roles and
+the built-in card themes, caches config,
 routes and views, switches the `current` symlink, reloads PHP-FPM and restarts the workers
 gracefully (a running export finishes first). The last five releases are kept; to roll
 back, point `current` at the previous folder and reload PHP-FPM (roll back migrations
