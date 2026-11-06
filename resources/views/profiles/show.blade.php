@@ -9,6 +9,10 @@
     ];
 @endphp
 <x-layouts.app :title="$customer->full_name.' · Digital profile'">
+    <x-slot:breadcrumbs>
+        <a href="{{ route('profiles.index') }}" class="hover:text-gray-700">Digital profiles</a><span>/</span><span class="text-gray-900">{{ $customer->full_name }}</span>
+    </x-slot:breadcrumbs>
+
     <x-page-header :title="$customer->full_name" :description="'Digital profile · '.ProfileThemes::get($profile->profile_theme)['name'].' theme · Card ID '.$profile->card_identifier">
         <x-slot:actions>
             <span class="{{ $profile->is_active ? 'badge-green' : 'badge-gray' }}">{{ $profile->is_active ? 'Live' : 'Switched off' }}</span>

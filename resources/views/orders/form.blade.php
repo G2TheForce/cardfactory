@@ -2,10 +2,14 @@
     $editing = $order->exists;
     $prices = $products->mapWithKeys(fn ($p) => [$p->sku => (float) $p->unit_price]);
     $skuById = $products->pluck('sku', 'id');
-    $items = old('items', collect($order->items ?? [])->map(fn ($i) => ['product' => $skuById[$i['card_inventory_id']] ?? ($i['sku'] ?? ''), 'qty' => $i['qty'], 'unit_price' => $i['unit_price']])->all() ?: [['product' => $products->first()?->sku, 'qty' => 10, 'unit_price' => '']]);
+    $items = old('items', collect($order->items ?? [])->map(fn ($i) => ['product' => $skuById[$i['card_inventory_id'] ?? 0] ?? ($i['sku'] ?? ''), 'qty' => $i['qty'], 'unit_price' => $i['unit_price']])->all() ?: [['product' => $products->first()?->sku, 'qty' => 10, 'unit_price' => '']]);
     $selectedCustomer = old('customer', $customers->firstWhere('id', $order->customer_id)?->ulid);
 @endphp
 <x-layouts.app :title="$editing ? 'Edit '.$order->order_number : 'New order'">
+    <x-slot:breadcrumbs>
+        <a href="{{ route('orders.index') }}" class="hover:text-gray-700">Orders</a><span>/</span>@if ($order->exists)<a href="{{ route('orders.show', $order) }}" class="hover:text-gray-700">{{ $order->order_number }}</a><span>/</span><span class="text-gray-900">Edit</span>@else<span class="text-gray-900">New order</span>@endif
+    </x-slot:breadcrumbs>
+
     <x-page-header :title="$editing ? 'Edit '.$order->order_number : 'New order'" description="Prices default to the product price. Totals are worked out on the server." />
 
     <form method="POST" action="{{ $editing ? route('orders.update', $order) : route('orders.store') }}" class="card max-w-4xl"

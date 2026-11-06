@@ -1,5 +1,9 @@
 @php $current = $card->currentAssignment; @endphp
 <x-layouts.app :title="'NFC card '.$card->card_identifier">
+    <x-slot:breadcrumbs>
+        <a href="{{ route('nfc.index') }}" class="hover:text-gray-700">NFC cards</a><span>/</span><span class="text-gray-900">{{ $card->card_identifier }}</span>
+    </x-slot:breadcrumbs>
+
     <x-page-header :title="$card->card_identifier" :description="$card->tag_type.($card->product ? ' · '.$card->product->name : '').($card->batch_number ? ' · batch '.$card->batch_number : '')">
         <x-slot:actions>
             @include('nfc._status', ['status' => $card->status])

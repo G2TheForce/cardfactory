@@ -117,7 +117,7 @@ class OrderController extends Controller
         return [
             'order' => $order,
             'customers' => Customer::orderBy('full_name')->limit(1000)->get(['id', 'ulid', 'full_name', 'email']),
-            'products' => CardInventory::where('is_active', true)->orWhereIn('id', collect($order->items ?? [])->pluck('card_inventory_id'))->orderBy('name')->get(['id', 'sku', 'name', 'unit_price']),
+            'products' => CardInventory::where('is_active', true)->orWhereIn('id', collect($order->items ?? [])->pluck('card_inventory_id')->filter())->orderBy('name')->get(['id', 'sku', 'name', 'unit_price']),
         ];
     }
 

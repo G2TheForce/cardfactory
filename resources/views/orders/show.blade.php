@@ -1,4 +1,8 @@
 <x-layouts.app :title="'Order '.$order->order_number">
+    <x-slot:breadcrumbs>
+        <a href="{{ route('orders.index') }}" class="hover:text-gray-700">Orders</a><span>/</span><span class="text-gray-900">{{ $order->order_number }}</span>
+    </x-slot:breadcrumbs>
+
     <x-page-header :title="$order->order_number" :description="'Created '.$order->created_at->toFormattedDateString().($order->creator ? ' by '.$order->creator->name : '')">
         <x-slot:actions>
             @include('orders._status', ['status' => $order->status])

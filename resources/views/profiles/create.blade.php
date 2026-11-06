@@ -1,4 +1,8 @@
 <x-layouts.app title="New digital profile">
+    <x-slot:breadcrumbs>
+        <a href="{{ route('profiles.index') }}" class="hover:text-gray-700">Digital profiles</a><span>/</span><span class="text-gray-900">New profile</span>
+    </x-slot:breadcrumbs>
+
     <x-page-header title="New digital profile" description="Pick whose card this is and how it looks. You can change everything later." />
 
     <form method="POST" action="{{ route('profiles.store') }}" class="card max-w-3xl"
