@@ -16,6 +16,8 @@ class ThemeSeeder extends Seeder
     public function run(SceneValidator $validator): void
     {
         foreach (ThemeLibrary::all() as $theme) {
+            $existing = CardTheme::withTrashed()->where('slug', $theme['slug'])->first();
+
             CardTheme::withTrashed()->updateOrCreate(
                 ['slug' => $theme['slug']],
                 array_merge($theme, [
@@ -23,7 +25,7 @@ class ThemeSeeder extends Seeder
                     'back' => $validator->validate($theme['back'], 'back'),
                     'is_system' => true,
                     'status' => CardTheme::STATUS_PUBLISHED,
-                    'published_at' => now(),
+                    'published_at' => $existing?->published_at ?? now(),
                     'deleted_at' => null,
                 ]),
             );

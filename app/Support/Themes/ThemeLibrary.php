@@ -64,7 +64,8 @@ class ThemeLibrary
             ['Classic Professional', 'classic', 'executive', ['primary' => '#1e293b', 'secondary' => '#334155', 'accent' => '#1e293b', 'background' => '#fdfdfb', 'text' => '#1e293b', 'muted' => '#64748b'], ['EB Garamond', 'Open Sans'], ['icon' => 'award', 'classic' => true]],
         ];
 
-        $library = collect($themes)->map(function ($t, $i) {
+        $offset = count(PremiumThemes::all());
+        $library = collect($themes)->map(function ($t, $i) use ($offset) {
             [$name, $category, $archetype, $palette, [$heading, $body], $opts] = $t;
             $fonts = ['heading' => $heading, 'body' => $body];
             [$front, $back] = self::build($archetype, $palette, $fonts, $opts);
@@ -80,11 +81,13 @@ class ThemeLibrary
                 'back' => $back,
                 'layout' => ['archetype' => $archetype, 'bleed_mm' => 3, 'safe_mm' => 3, 'corner_radius_mm' => in_array($archetype, ['gradient', 'glass'], true) ? 3 : 0],
                 'is_premium' => in_array($category, ['luxury', 'dark', 'elegant'], true),
-                'sort_order' => $i + 1,
+                'sort_order' => $offset + $i + 1,
             ];
         });
 
-        $premium = collect(PremiumThemes::all())->values()->map(fn ($t, $i) => $t + ['sort_order' => $library->count() + $i + 1]);
+        // The portrait photo-card themes are listed first so they are on the
+        // first page of the gallery (24 per page) rather than spilling onto page 2.
+        $premium = collect(PremiumThemes::all())->values()->map(fn ($t, $i) => $t + ['sort_order' => $i + 1]);
 
         return $library->concat($premium)->all();
     }

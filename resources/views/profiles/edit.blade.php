@@ -77,9 +77,17 @@
             <div class="card-body">
                 {{-- Appearance --}}
                 <div x-show="tab === 'appearance'" class="space-y-8">
-                    {{-- Themes --}}
-                    @foreach (ProfileThemes::byCategory() as $category)
-                        <fieldset>
+                    {{-- Themes: jump links so every category is visible without scrolling --}}
+                    <nav class="-mb-4 flex flex-wrap gap-2" aria-label="Theme categories">
+                        @foreach (ProfileThemes::byCategory() as $key => $category)
+                            <a href="#theme-group-{{ $key }}" class="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-700 hover:border-brand-300 hover:text-brand-700">
+                                {{ $category['label'] }} <span class="text-gray-400">{{ count($category['themes']) }}</span>
+                                @if ($key === 'studio')<span class="rounded-full bg-brand-100 px-1.5 text-[10px] font-bold uppercase text-brand-700">Website</span>@endif
+                            </a>
+                        @endforeach
+                    </nav>
+                    @foreach (ProfileThemes::byCategory() as $key => $category)
+                        <fieldset id="theme-group-{{ $key }}" class="scroll-mt-24">
                             <legend class="text-sm font-semibold text-gray-900">{{ $category['label'] }} themes</legend>
                             <p class="mb-3 text-xs text-gray-500">{{ $category['description'] }}</p>
                             <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">

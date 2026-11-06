@@ -32,6 +32,8 @@ rm -rf node_modules
 
 php artisan storage:link
 php artisan migrate --force
+php artisan db:seed --class='Database\Seeders\RolesAndPermissionsSeeder' --force   # new permissions
+php artisan db:seed --class='Database\Seeders\ThemeSeeder' --force               # new built-in card themes
 php artisan optimize          # config, routes, events and views cached
 
 ln -sfn "$RELEASE" "$APP/current"

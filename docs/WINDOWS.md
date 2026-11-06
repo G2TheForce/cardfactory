@@ -92,15 +92,24 @@ Open <http://localhost:8000>. Demo accounts (local only) all use the password `p
 
 ## Updating later
 
+Stop `php artisan serve` and the queue worker first (Ctrl+C in both windows), then:
+
 ```powershell
+cd $HOME\smartcard-studio
+git checkout main
 git pull
 composer install
 npm install
 npm run build
-php artisan migrate
+php artisan smartcard:update
 ```
 
-Restart the queue worker afterwards (Ctrl+C, then start it again).
+`smartcard:update` runs new migrations, adds new built-in card themes and permissions, and
+clears cached config, routes and views. It is safe to run any time. Start both windows again
+and reload the browser with **Ctrl+F5**.
+
+If a new feature still doesn't appear, check that you have the latest code:
+`git log --oneline -3` should list the same top commit as the `main` branch on GitHub.
 
 ## Troubleshooting
 
@@ -111,4 +120,5 @@ Restart the queue worker afterwards (Ctrl+C, then start it again).
 | Exports stay "queued" | The queue worker (window 2) is not running |
 | PNG/PDF export options disabled | Chrome not found; set `CHROME_PATH` (step 4) and restart both windows |
 | Styles missing / Vite manifest error | Run `npm run build` |
+| New themes or features missing after `git pull` | Run `npm run build` and `php artisan smartcard:update`, restart both windows, press Ctrl+F5 |
 | `could not find driver` | Enable `extension=pdo_sqlite` in `php.ini` |
