@@ -8,6 +8,10 @@
     $editable = in_array($import->status, ['uploaded', 'validated'], true);
 @endphp
 <x-layouts.app :title="'Bulk run · '.$import->original_filename">
+    <x-slot:breadcrumbs>
+        <a href="{{ route('imports.index') }}" class="hover:text-gray-700">Bulk generator</a><span>/</span><span class="text-gray-900">{{ $import->original_filename }}</span>
+    </x-slot:breadcrumbs>
+
     <x-page-header :title="$import->original_filename" :description="$import->total_rows.' rows · uploaded '.$import->created_at->diffForHumans().' by '.($import->user?->name ?? 'unknown')">
         <x-slot:actions>
             <span class="{{ $badges[$import->status] ?? 'badge-gray' }}">{{ $labels[$import->status] ?? ucfirst($import->status) }}</span>

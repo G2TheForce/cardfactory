@@ -1,4 +1,8 @@
 <x-layouts.app title="New bulk run">
+    <x-slot:breadcrumbs>
+        <a href="{{ route('imports.index') }}" class="hover:text-gray-700">Bulk generator</a><span>/</span><span class="text-gray-900">New run</span>
+    </x-slot:breadcrumbs>
+
     <x-page-header title="New bulk run" description="Upload a spreadsheet with one customer per row. You'll match the columns and check every row before anything is created." />
 
     <div class="grid gap-6 lg:grid-cols-3">

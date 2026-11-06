@@ -41,8 +41,8 @@
                         $previewWidth = min(100, round(63.1 * (float) $design->width_mm / max(1, (float) $design->height_mm), 1));
                     @endphp
                     <a href="{{ route('designs.edit', $design) }}" class="relative mx-auto block" style="width: {{ $previewWidth }}%" @mouseenter="side = 'back'" @mouseleave="side = 'front'" aria-label="Edit {{ $design->name }}">
-                        <div x-show="side === 'front'"><x-card-preview :svg="$previews[$design->id]['front']" /></div>
-                        <div x-show="side === 'back'" x-cloak><x-card-preview :svg="$previews[$design->id]['back']" /></div>
+                        <div x-show="side === 'front'"><x-card-preview :svg="$previews[$design->id]['front']" :blank="empty($design->front['elements'] ?? [])" /></div>
+                        <div x-show="side === 'back'" x-cloak><x-card-preview :svg="$previews[$design->id]['back']" :blank="empty($design->back['elements'] ?? [])" /></div>
                     </a>
                     <div class="mt-4 flex items-start justify-between gap-3">
                         <div class="min-w-0">

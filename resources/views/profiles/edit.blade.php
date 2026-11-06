@@ -11,6 +11,10 @@
     $sectionLabels = ProfileThemes::SECTIONS;
 @endphp
 <x-layouts.app :title="'Edit profile · '.$profile->customer->full_name">
+    <x-slot:breadcrumbs>
+        <a href="{{ route('profiles.index') }}" class="hover:text-gray-700">Digital profiles</a><span>/</span><a href="{{ route('profiles.show', $profile) }}" class="hover:text-gray-700">{{ $profile->customer->full_name }}</a><span>/</span><span class="text-gray-900">Edit</span>
+    </x-slot:breadcrumbs>
+
     <x-page-header :title="'Edit profile'" :description="$profile->customer->full_name.' · /card/'.$profile->slug">
         <x-slot:actions>
             <a href="{{ route('profiles.show', $profile) }}" class="btn-secondary"><x-lucide-arrow-left class="h-4 w-4" /> Back</a>

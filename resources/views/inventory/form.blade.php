@@ -1,5 +1,9 @@
 @php $editing = $product->exists; @endphp
 <x-layouts.app :title="$editing ? 'Edit '.$product->sku : 'New product'">
+    <x-slot:breadcrumbs>
+        <a href="{{ route('inventory.index') }}" class="hover:text-gray-700">Inventory</a><span>/</span><span class="text-gray-900">{{ $product->exists ? $product->sku : 'New product' }}</span>
+    </x-slot:breadcrumbs>
+
     <x-page-header :title="$editing ? 'Edit '.$product->sku : 'New product'" description="A card product you stock and sell. Individual cards are added on the NFC cards page." />
 
     <form method="POST" action="{{ $editing ? route('inventory.update', $product) : route('inventory.store') }}" class="card max-w-3xl">

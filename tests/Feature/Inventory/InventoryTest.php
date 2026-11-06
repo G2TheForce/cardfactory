@@ -179,6 +179,17 @@ class InventoryTest extends TestCase
         $this->post(route('orders.store'), ['status' => 'pending', 'currency' => 'USD', 'items' => []])->assertSessionHasErrors('items');
     }
 
+    public function test_edit_form_opens_for_orders_saved_without_a_product_id(): void
+    {
+        $this->product();
+        $order = CardOrder::factory()->create(['status' => 'pending']);
+
+        $this->actingAs($this->userWithRole(User::ROLE_ADMIN))
+            ->get(route('orders.edit', $order))
+            ->assertOk()
+            ->assertSee('NFC-PVC-215');
+    }
+
     public function test_dashboard_shows_stock_for_inventory_staff(): void
     {
         $this->product(['reorder_level' => 10]);

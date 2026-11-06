@@ -4,6 +4,10 @@
     $h = (float) $design->height_mm;
 @endphp
 <x-layouts.app :title="'Export · '.$design->name">
+    <x-slot:breadcrumbs>
+        <a href="{{ route('designs.index') }}" class="hover:text-gray-700">Card designs</a><span>/</span><a href="{{ route('designs.edit', $design) }}" class="hover:text-gray-700">{{ $design->name }}</a><span>/</span><span class="text-gray-900">Export</span>
+    </x-slot:breadcrumbs>
+
     <x-page-header :title="'Export '.$design->name" :description="number_format($w, 1).' × '.number_format($h, 1).' mm · '.ucfirst($design->orientation).($design->customer ? ' · '.$design->customer->full_name : '')">
         <x-slot:actions>
             <a href="{{ route('designs.edit', $design) }}" class="btn-secondary"><x-lucide-pen-tool class="h-4 w-4" /> Open editor</a>

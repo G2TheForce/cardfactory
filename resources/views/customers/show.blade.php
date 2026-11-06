@@ -72,7 +72,7 @@
                                 $editable = auth()->user()->can('update', $design);
                             @endphp
                             <{{ $editable ? 'a' : 'div' }} @if ($editable) href="{{ route('designs.edit', $design) }}" @endif class="group block">
-                                <div class="mx-auto transition group-hover:-translate-y-0.5" style="width: {{ $w }}%"><x-card-preview :svg="$previews[$design->id]['front']" /></div>
+                                <div class="mx-auto transition group-hover:-translate-y-0.5" style="width: {{ $w }}%"><x-card-preview :svg="$previews[$design->id]['front']" :blank="empty($design->front['elements'] ?? [])" /></div>
                                 <p class="mt-2 truncate text-sm font-medium text-gray-800 group-hover:text-brand-700">{{ $design->name }}</p>
                                 <p class="text-xs text-gray-400">{{ ucfirst($design->status) }} · updated {{ $design->updated_at->diffForHumans() }}</p>
                             </{{ $editable ? 'a' : 'div' }}>
