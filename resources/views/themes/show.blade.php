@@ -32,9 +32,14 @@
                 </div>
                 <a :href="'{{ url('themes/'.$theme->ulid.'/preview') }}/' + side + '.svg'" target="_blank" class="btn-ghost btn-sm"><x-lucide-download class="h-4 w-4" /> SVG preview</a>
             </div>
+            @php
+                $portrait = (float) $theme->height_mm > (float) $theme->width_mm;
+            @endphp
             <div class="mx-auto max-w-2xl bg-[radial-gradient(circle,#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] p-6 sm:p-10">
-                <div x-show="side === 'front'"><x-card-preview :svg="$preview['front']" /></div>
-                <div x-show="side === 'back'" x-cloak><x-card-preview :svg="$preview['back']" /></div>
+                <div class="{{ $portrait ? 'mx-auto max-w-xs' : '' }}">
+                    <div x-show="side === 'front'"><x-card-preview :svg="$preview['front']" /></div>
+                    <div x-show="side === 'back'" x-cloak><x-card-preview :svg="$preview['back']" /></div>
+                </div>
             </div>
             <p class="mt-4 text-center text-xs text-gray-500">Preview uses sample details. Your own information replaces them when you design a card.</p>
         </div>

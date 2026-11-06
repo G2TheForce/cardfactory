@@ -44,10 +44,18 @@
         <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             @foreach ($themes as $theme)
                 <article class="group card overflow-hidden p-4 transition hover:-translate-y-0.5 hover:shadow-lift" x-data="{ side: 'front' }">
-                    <a href="{{ route('themes.show', $theme) }}" class="relative block" @mouseenter="side = 'back'" @mouseleave="side = 'front'" aria-label="Open {{ $theme->name }}">
-                        <div x-show="side === 'front'"><x-card-preview :svg="$previews[$theme->id]['front']" /></div>
-                        <div x-show="side === 'back'" x-cloak><x-card-preview :svg="$previews[$theme->id]['back']" /></div>
-                    </a>
+                    @if ((float) $theme->height_mm > (float) $theme->width_mm)
+                        {{-- Portrait themes show front and back side by side, at the height of a landscape card. --}}
+                        <a href="{{ route('themes.show', $theme) }}" class="flex justify-center gap-3" aria-label="Open {{ $theme->name }}">
+                            <div class="w-[39.8%]"><x-card-preview :svg="$previews[$theme->id]['front']" /></div>
+                            <div class="w-[39.8%]"><x-card-preview :svg="$previews[$theme->id]['back']" /></div>
+                        </a>
+                    @else
+                        <a href="{{ route('themes.show', $theme) }}" class="relative block" @mouseenter="side = 'back'" @mouseleave="side = 'front'" aria-label="Open {{ $theme->name }}">
+                            <div x-show="side === 'front'"><x-card-preview :svg="$previews[$theme->id]['front']" /></div>
+                            <div x-show="side === 'back'" x-cloak><x-card-preview :svg="$previews[$theme->id]['back']" /></div>
+                        </a>
+                    @endif
                     <div class="mt-4 flex items-start justify-between gap-3">
                         <div class="min-w-0">
                             <h2 class="truncate text-sm font-semibold text-gray-900"><a href="{{ route('themes.show', $theme) }}" class="hover:text-brand-700">{{ $theme->name }}</a></h2>

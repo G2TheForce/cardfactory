@@ -35,6 +35,8 @@ class ThemeLibrary
         'dark' => 'Dark',
         'elegant' => 'Elegant',
         'classic' => 'Classic',
+        'beauty' => 'Beauty & Wellness',
+        'fitness' => 'Fitness',
     ];
 
     public static function all(): array
@@ -62,7 +64,7 @@ class ThemeLibrary
             ['Classic Professional', 'classic', 'executive', ['primary' => '#1e293b', 'secondary' => '#334155', 'accent' => '#1e293b', 'background' => '#fdfdfb', 'text' => '#1e293b', 'muted' => '#64748b'], ['EB Garamond', 'Open Sans'], ['icon' => 'award', 'classic' => true]],
         ];
 
-        return collect($themes)->map(function ($t, $i) {
+        $library = collect($themes)->map(function ($t, $i) {
             [$name, $category, $archetype, $palette, [$heading, $body], $opts] = $t;
             $fonts = ['heading' => $heading, 'body' => $body];
             [$front, $back] = self::build($archetype, $palette, $fonts, $opts);
@@ -80,7 +82,11 @@ class ThemeLibrary
                 'is_premium' => in_array($category, ['luxury', 'dark', 'elegant'], true),
                 'sort_order' => $i + 1,
             ];
-        })->all();
+        });
+
+        $premium = collect(PremiumThemes::all())->values()->map(fn ($t, $i) => $t + ['sort_order' => $library->count() + $i + 1]);
+
+        return $library->concat($premium)->all();
     }
 
     private static function describe(string $name, string $archetype): string

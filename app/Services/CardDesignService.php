@@ -212,7 +212,7 @@ class CardDesignService
         $brand = $design->brand_kit_id ? ($design->brandKit?->mergeFallbacks() ?? []) : [];
         $customer = $design->customer;
         if (! $customer) {
-            return array_merge(Scene::sampleData(), $brand);
+            return array_merge($this->sampleData($design), $brand);
         }
 
         $data = $this->customerData($customer);
@@ -291,6 +291,15 @@ class CardDesignService
             ->mapWithKeys(fn ($k) => [$k => in_array($k, ['logo', 'photo'], true) ? null : '{{'.$k.'}}'])
             ->put('profile_url', rtrim(config('app.url'), '/').'/card/preview')
             ->all();
+    }
+
+    /** Sample details for a design with no customer: the theme's own sample business, if it has one. */
+    public function sampleData(CardDesign $design): array
+    {
+        $theme = ! $design->card_theme_id ? null : ($design->relationLoaded('theme') ? $design->theme : $design->theme()->withTrashed()->first(['id', 'layout']));
+        $sample = $theme?->layout['sample'] ?? [];
+
+        return array_merge(Scene::sampleData(), is_array($sample) ? $sample : []);
     }
 
     public function renderOptions(CardDesign $design, array $extra = []): array
