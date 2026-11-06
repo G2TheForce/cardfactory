@@ -37,7 +37,7 @@ class LandingPageTest extends TestCase
     public function test_themes_come_in_personal_and_professional_groups(): void
     {
         $groups = ProfileThemes::byCategory();
-        $this->assertSame(['personal', 'professional'], array_keys($groups));
+        $this->assertSame(['personal', 'professional', 'studio'], array_keys($groups));
         $this->assertArrayHasKey('creator', $groups['personal']['themes']);
         $this->assertArrayHasKey('executive', $groups['professional']['themes']);
         foreach (ProfileThemes::THEMES as $key => $theme) {

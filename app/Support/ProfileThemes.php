@@ -94,11 +94,50 @@ final class ProfileThemes
             'header' => 'centered', 'font' => 'sans', 'accent' => '#18181b',
             'colors' => ['bg' => '#fafafa', 'surface' => '#ffffff', 'text' => '#18181b', 'muted' => '#71717a', 'border' => '#e4e4e7'],
         ],
+        // Profile Studio: full one-page personal websites (layout "studio",
+        // rendered by profiles/public-studio). "deep" is the dark band colour.
+        'ps-crimson' => self::STUDIO_LIGHT + [
+            'name' => 'Himalayan Crimson', 'description' => 'Crimson and midnight navy on warm paper.',
+            'accent' => '#a3122a', 'deep' => '#14203f', 'colors' => ['bg' => '#fbf9f6'] + self::STUDIO_INK,
+        ],
+        'ps-rhododendron' => self::STUDIO_LIGHT + [
+            'name' => 'Rhododendron', 'description' => 'Deep rose with plum, soft and confident.',
+            'accent' => '#b0204f', 'deep' => '#2a1430', 'colors' => ['bg' => '#fcf8f8'] + self::STUDIO_INK,
+        ],
+        'ps-tea' => self::STUDIO_LIGHT + [
+            'name' => 'Tea Garden', 'description' => 'Forest green, calm and natural.',
+            'accent' => '#24644f', 'deep' => '#13261f', 'colors' => ['bg' => '#f7f9f6'] + self::STUDIO_INK,
+        ],
+        'ps-marigold' => self::STUDIO_LIGHT + [
+            'name' => 'Marigold', 'description' => 'Burnt orange and espresso, warm and bold.',
+            'accent' => '#9a4a07', 'deep' => '#2b1b0e', 'colors' => ['bg' => '#fcf8f2'] + self::STUDIO_INK,
+        ],
+        'ps-everest' => self::STUDIO_LIGHT + [
+            'name' => 'Everest Blue', 'description' => 'Cobalt and ink, crisp and corporate.',
+            'accent' => '#1e4fb8', 'deep' => '#0f1a33', 'colors' => ['bg' => '#f6f8fb'] + self::STUDIO_INK,
+        ],
+        'ps-graphite' => self::STUDIO_LIGHT + [
+            'name' => 'Graphite', 'description' => 'Black and stone, quietly luxurious.',
+            'accent' => '#26262e', 'deep' => '#111114', 'colors' => ['bg' => '#f7f6f3'] + self::STUDIO_INK,
+        ],
+        'ps-night' => self::STUDIO_LIGHT + [
+            'name' => 'Night Studio', 'description' => 'The same site in dark mode with a rose glow.',
+            'accent' => '#e0475f', 'deep' => '#0a0a0e', 'glow' => true,
+            'colors' => ['bg' => '#121216', 'surface' => '#1b1b21', 'text' => '#f1f0ee', 'muted' => '#9a99a3', 'border' => '#2e2e36'],
+        ],
     ];
+
+    /** Shared base for Profile Studio themes. */
+    private const STUDIO_LIGHT = [
+        'category' => 'studio', 'layout' => 'studio', 'header' => 'centered', 'font' => 'serif',
+    ];
+
+    private const STUDIO_INK = ['surface' => '#ffffff', 'text' => '#16161c', 'muted' => '#5c5c66', 'border' => '#e6e0d8'];
 
     public const CATEGORIES = [
         'personal' => ['label' => 'Personal', 'description' => 'Creators, influencers and freelancers. Social buttons come first.'],
         'professional' => ['label' => 'Professional', 'description' => 'Consultants, executives and companies. Contact details come first.'],
+        'studio' => ['label' => 'Profile Studio', 'description' => 'A full animated one-page website: arched portrait, count-up stats, motto band and a contact panel. Same contact, social, QR, NFC and analytics features.'],
     ];
 
     public const SOCIAL_STYLES = ['buttons' => 'Follow buttons', 'icons' => 'Icons only'];
@@ -164,6 +203,8 @@ final class ProfileThemes
         $theme['effect'] = isset(self::EFFECTS[$settings['effect'] ?? '']) ? $settings['effect'] : ($theme['effect'] ?? 'none');
         $theme['glow'] = isset($settings['glow']) ? (bool) $settings['glow'] : ($theme['glow'] ?? false);
         $theme['dark'] = self::isDark($theme['colors']['bg']);
+        $theme['layout'] ??= 'card';
+        $theme['font_override'] = isset(self::FONTS[$settings['font'] ?? '']);
         $theme['font_stack'] = self::FONTS[$theme['font']]['stack'] ?? self::FONTS['sans']['stack'];
 
         return $theme;
@@ -185,6 +226,12 @@ final class ProfileThemes
         return sprintf('#%02x%02x%02x', ...array_map(fn ($x, $y) => (int) round($x + ($y - $x) * $amount), $a, $b));
     }
 
+    /** Profile Studio themes render as a full one-page website. */
+    public static function isStudio(?string $key): bool
+    {
+        return (self::THEMES[$key ?? '']['layout'] ?? null) === 'studio';
+    }
+
     /** Themes grouped by category, in CATEGORIES order. */
     public static function byCategory(): array
     {
@@ -200,7 +247,10 @@ final class ProfileThemes
     public static function defaultLayout(?string $theme = null): array
     {
         $keys = array_keys(self::SECTIONS);
-        if ($theme && self::get($theme)['category'] === 'personal') {
+        if (self::isStudio($theme)) {
+            // A website reads top to bottom: story first, contact panel last.
+            $keys = ['actions', 'about', 'social', 'business', 'links', 'ctas', 'portfolio', 'map', 'contact'];
+        } elseif ($theme && self::get($theme)['category'] === 'personal') {
             $keys = array_values(array_unique(['actions', 'social', ...$keys]));
         }
 

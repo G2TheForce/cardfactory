@@ -52,7 +52,7 @@ class ProfileSiteExporter
 
         $assets = $this->buildAssets($files);
 
-        $html = view('profiles.public', [
+        $html = view($this->profiles->publicView($profile), [
             'profile' => $profile,
             'p' => $p,
             'urls' => ['public' => $siteUrl ?? '', 'qr' => $siteUrl ?? '', 'vcard' => $vcardName],

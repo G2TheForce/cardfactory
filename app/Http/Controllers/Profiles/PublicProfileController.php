@@ -40,7 +40,7 @@ class PublicProfileController extends Controller
             $this->analytics->record(AnalyticsEvent::PROFILE_VIEW, $profile, $request, in_array($via, ['qr', 'nfc'], true) ? $via : ($request->headers->get('referer') ? 'link' : 'direct'));
         }
 
-        return response()->view('profiles.public', [
+        return response()->view($this->profiles->publicView($profile), [
             'profile' => $profile,
             'p' => $this->profiles->publicData($profile),
             'urls' => $this->profiles->urls($profile),
