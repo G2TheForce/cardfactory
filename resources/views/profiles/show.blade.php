@@ -62,6 +62,30 @@
                 </ul>
             </section>
 
+            {{-- Publish as a website --}}
+            @if ($canEdit)
+                <section id="publish" class="card scroll-mt-6">
+                    <div class="card-header"><h2 class="card-title">Publish as a website</h2></div>
+                    <form method="POST" action="{{ route('profiles.site.export', $profile) }}" class="space-y-4 p-5">
+                        @csrf
+                        <p class="text-sm text-gray-600">
+                            Download this page as a ready-made website and upload it to a free host such as
+                            <a href="https://app.netlify.com/drop" target="_blank" rel="noopener" class="font-semibold text-brand-600 hover:text-brand-700">Netlify Drop</a>,
+                            GitHub Pages or Cloudflare Pages. It works on its own, even when this app isn't online.
+                        </p>
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <div class="flex-1">
+                                <label for="site_url" class="form-label">Site address <span class="font-normal text-gray-400">(optional)</span></label>
+                                <input id="site_url" name="site_url" type="url" value="{{ old('site_url') }}" placeholder="https://{{ $profile->slug }}.netlify.app" class="input-base">
+                                @error('site_url')<p class="form-error">{{ $message }}</p>@enderror
+                            </div>
+                            <button class="btn-primary shrink-0"><x-lucide-download class="h-4 w-4" /> Download website</button>
+                        </div>
+                        <p class="form-hint">Add the address once you know it, then download again: the QR code and share button use it. The ZIP includes step-by-step upload instructions.</p>
+                    </form>
+                </section>
+            @endif
+
             {{-- QR code --}}
             <section id="qr" class="card scroll-mt-6">
                 <div class="card-header">

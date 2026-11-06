@@ -1,9 +1,10 @@
 @php
     use App\Support\ProfileThemes;
-    $tabs = ['appearance' => 'Appearance', 'layout' => 'Layout', 'buttons' => 'Buttons', 'portfolio' => 'Portfolio', 'settings' => 'Settings'];
+    use App\Support\CustomerFields;
+    $tabs = ['appearance' => 'Appearance', 'social' => 'Social', 'layout' => 'Layout', 'buttons' => 'Buttons', 'portfolio' => 'Portfolio', 'settings' => 'Settings'];
     $tab = in_array(request('tab'), array_keys($tabs), true) ? request('tab') : 'appearance';
     // Send people back to the tab with the first error.
-    $errorTabs = ['slug' => 'settings', 'is_active' => 'settings', 'card_design' => 'settings', 'layout' => 'layout', 'ctas' => 'buttons', 'portfolio' => 'portfolio'];
+    $errorTabs = ['social_manual' => 'social', 'slug' => 'settings', 'is_active' => 'settings', 'card_design' => 'settings', 'layout' => 'layout', 'ctas' => 'buttons', 'portfolio' => 'portfolio'];
     foreach ($errors->keys() as $key) {
         if (isset($errorTabs[strtok($key, '.')])) { $tab = $errorTabs[strtok($key, '.')]; break; }
     }
@@ -32,6 +33,8 @@
                   tab: @js($tab),
                   theme: @js(old('profile_theme', $profile->profile_theme)),
                   accent: @js(old('accent', $settings['accent'])),
+                  background: @js(old('background', $settings['background'] ?? '')),
+                  themeBackgrounds: @js(collect(ProfileThemes::THEMES)->map(fn ($t) => $t['colors']['bg'])),
                   themeAccents: @js(collect(ProfileThemes::THEMES)->map(fn ($t) => $t['accent'])),
                   layout: @js(collect(old('layout', $layout))->map(fn ($r) => ['key' => $r['key'], 'enabled' => filter_var($r['enabled'], FILTER_VALIDATE_BOOL)])->values()),
                   labels: @js($sectionLabels),
@@ -53,19 +56,22 @@
             <div class="card-body">
                 {{-- Appearance --}}
                 <div x-show="tab === 'appearance'" class="space-y-6">
-                    <fieldset>
-                        <legend class="form-label">Theme</legend>
-                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
-                            @foreach ($themes as $key => $theme)
-                                <label class="cursor-pointer rounded-xl border border-gray-200 p-2 transition has-[:checked]:border-brand-500 has-[:checked]:ring-2 has-[:checked]:ring-brand-500/30">
-                                    <input type="radio" name="profile_theme" value="{{ $key }}" class="sr-only" x-model="theme" @change="accent = themeAccents[theme]">
-                                    @include('profiles.partials.theme-swatch', ['theme' => $theme])
-                                    <span class="mt-2 block text-center text-xs font-semibold text-gray-800">{{ $theme['name'] }}</span>
-                                    <span class="block text-center text-[11px] leading-tight text-gray-500">{{ $theme['description'] }}</span>
-                                </label>
-                            @endforeach
-                        </div>
-                    </fieldset>
+                    @foreach (ProfileThemes::byCategory() as $category)
+                        <fieldset>
+                            <legend class="form-label">{{ $category['label'] }} themes</legend>
+                            <p class="-mt-1 mb-2 text-xs text-gray-500">{{ $category['description'] }}</p>
+                            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                                @foreach ($category['themes'] as $key => $theme)
+                                    <label class="cursor-pointer rounded-xl border border-gray-200 p-2 transition has-[:checked]:border-brand-500 has-[:checked]:ring-2 has-[:checked]:ring-brand-500/30">
+                                        <input type="radio" name="profile_theme" value="{{ $key }}" class="sr-only" x-model="theme" @change="accent = themeAccents[theme]; background = ''">
+                                        @include('profiles.partials.theme-swatch', ['theme' => $theme])
+                                        <span class="mt-2 block text-center text-xs font-semibold text-gray-800">{{ $theme['name'] }}</span>
+                                        <span class="block text-center text-[11px] leading-tight text-gray-500">{{ $theme['description'] }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </fieldset>
+                    @endforeach
 
                     <div class="grid gap-5 sm:grid-cols-2">
                         <div>
@@ -89,6 +95,36 @@
                         </fieldset>
                     </div>
 
+                    <div class="grid gap-5 sm:grid-cols-3">
+                        <div>
+                            <label class="form-label" for="background">Page background</label>
+                            <div class="flex gap-2">
+                                <input type="color" :value="background || themeBackgrounds[theme]" @input="background = $event.target.value" class="h-10 w-12 cursor-pointer rounded-lg border border-gray-300 bg-white p-1" aria-label="Pick background colour">
+                                <input id="background" name="background" x-model="background" class="input-base font-mono" maxlength="7" :placeholder="themeBackgrounds[theme]">
+                            </div>
+                            @error('background')<p class="form-error">{{ $message }}</p>@enderror
+                            <p class="form-hint">Leave empty for the theme's own. Text colours adapt to light or dark.</p>
+                        </div>
+                        <div>
+                            <label class="form-label" for="header_style">Header</label>
+                            <select id="header_style" name="header_style" class="select-base">
+                                <option value="">Theme default</option>
+                                @foreach (ProfileThemes::HEADER_STYLES as $key => $label)
+                                    <option value="{{ $key }}" @selected(old('header_style', $settings['header_style']) === $key)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label" for="font">Font</label>
+                            <select id="font" name="font" class="select-base">
+                                <option value="">Theme default</option>
+                                @foreach (ProfileThemes::FONTS as $key => $font)
+                                    <option value="{{ $key }}" @selected(old('font', $settings['font']) === $key) style="font-family: {{ $font['stack'] }}">{{ $font['label'] }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
                     <x-field name="headline" label="Headline" :value="$settings['headline']" maxlength="120" hint="A short line under the name, e.g. what you help people with." />
 
                     <div>
@@ -103,6 +139,78 @@
                         @error('cover')<p class="form-error">{{ $message }}</p>@enderror
                         <p class="form-hint">Shown in the header (JPG, PNG or WebP, up to 5 MB). Wide images work best.</p>
                     </div>
+                </div>
+
+                {{-- Social --}}
+                <div x-show="tab === 'social'" x-cloak class="space-y-5">
+                    <div class="grid gap-5 sm:grid-cols-2">
+                        <fieldset>
+                            <legend class="form-label">Social links look like</legend>
+                            <div class="flex gap-2">
+                                @foreach (ProfileThemes::SOCIAL_STYLES as $key => $label)
+                                    <label class="flex-1 cursor-pointer rounded-xl border border-gray-200 px-3 py-2 text-center text-sm font-medium text-gray-700 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-700">
+                                        <input type="radio" name="social_style" value="{{ $key }}" class="sr-only" @checked(old('social_style', $settings['social_style']) === $key)>{{ $label }}
+                                    </label>
+                                @endforeach
+                            </div>
+                            <p class="form-hint">Follow buttons are full-width, in each network's colours, with "Subscribe" or "Follow" and the follower count.</p>
+                        </fieldset>
+                        <label class="flex items-start gap-3 sm:pt-7">
+                            <input type="hidden" name="show_follower_counts" value="0">
+                            <input type="checkbox" name="show_follower_counts" value="1" class="checkbox-base mt-0.5" @checked(old('show_follower_counts', $settings['show_follower_counts']))>
+                            <span><span class="block text-sm font-medium text-gray-900">Show follower counts</span><span class="block text-xs text-gray-500">Only on Follow buttons, and only for networks with a known count.</span></span>
+                        </label>
+                    </div>
+
+                    @php $socialLinks = array_filter($profile->customer->social_links ?? []); @endphp
+                    @if ($socialLinks)
+                        <div class="overflow-hidden rounded-xl border border-gray-200">
+                            <div class="flex items-center justify-between gap-3 border-b border-gray-100 bg-gray-50 px-4 py-2.5">
+                                <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Follower counts</span>
+                                <button type="submit" form="refresh-social" class="btn-secondary btn-sm"><x-lucide-refresh-cw class="h-3.5 w-3.5" /> Refresh now</button>
+                            </div>
+                            @foreach (CustomerFields::SOCIAL as $network => $label)
+                                @continue(! isset($socialLinks[$network]))
+                                @php
+                                    $row = $settings['social_counts'][$network] ?? [];
+                                    $reason = $social->unavailableReason($network);
+                                @endphp
+                                <div class="grid items-center gap-3 border-b border-gray-100 px-4 py-3 last:border-0 sm:grid-cols-[1fr_160px]">
+                                    <div class="min-w-0">
+                                        <p class="flex items-center gap-2 text-sm font-medium text-gray-900">
+                                            <x-dynamic-component :component="'lucide-'.(\App\Support\Scene\IconLibrary::SOCIAL[$network] ?? 'link')" class="h-4 w-4 text-gray-400" />
+                                            {{ $label }}
+                                            @if (isset($row['count']))
+                                                <span class="badge-green">{{ \App\Services\Social\SocialStatsService::format($row['count']) }} fetched</span>
+                                            @endif
+                                        </p>
+                                        <p class="mt-0.5 truncate text-xs text-gray-500">{{ $socialLinks[$network] }}</p>
+                                        @if (! empty($row['error']))
+                                            <p class="mt-0.5 text-xs text-amber-700">{{ $row['error'] }}</p>
+                                        @elseif ($reason)
+                                            <p class="mt-0.5 text-xs text-gray-500">{{ $reason }}</p>
+                                        @elseif (! empty($row['fetched_at']))
+                                            <p class="mt-0.5 text-xs text-gray-500">Updated {{ \Illuminate\Support\Carbon::parse($row['fetched_at'])->diffForHumans() }}. Refreshes daily.</p>
+                                        @else
+                                            <p class="mt-0.5 text-xs text-gray-500">Fetched automatically. Press Refresh now to get it straight away.</p>
+                                        @endif
+                                    </div>
+                                    <div>
+                                        <label class="sr-only" for="social_manual_{{ $network }}">{{ $label }} count</label>
+                                        <input id="social_manual_{{ $network }}" name="social_manual[{{ $network }}]" value="{{ old('social_manual.'.$network, $row['manual'] ?? '') }}" inputmode="decimal" maxlength="14"
+                                               class="input-base" placeholder="{{ $reason ? 'e.g. 12.4K' : 'Override, e.g. 12.4K' }}">
+                                        @error('social_manual.'.$network)<p class="form-error">{{ $message }}</p>@enderror
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        <p class="text-xs text-gray-500">A number you type in is shown instead of the fetched one. Leave it empty to use the fetched count.</p>
+                    @else
+                        <div class="rounded-xl border border-dashed border-gray-200 px-6 py-8 text-center text-sm text-gray-500">
+                            No social links yet.
+                            @can('update', $profile->customer)<a href="{{ route('customers.edit', $profile->customer) }}" class="font-semibold text-brand-600 hover:text-brand-700">Add them on the customer record</a>@endcan
+                        </div>
+                    @endif
                 </div>
 
                 {{-- Layout --}}
@@ -214,6 +322,7 @@
                 <button class="btn-primary"><x-lucide-save class="h-4 w-4" /> Save profile</button>
             </div>
         </form>
+        <form id="refresh-social" method="POST" action="{{ route('profiles.social.refresh', $profile) }}" class="hidden">@csrf</form>
 
         <aside class="xl:sticky xl:top-6 xl:self-start">
             <div class="card overflow-hidden">

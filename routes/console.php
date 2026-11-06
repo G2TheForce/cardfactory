@@ -9,6 +9,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('exports:prune')->daily();
+Schedule::command('profiles:refresh-social-counts')->dailyAt('04:30');
 Schedule::command('imports:prune')->daily();
 Schedule::command('queue:prune-failed --hours=168')->daily();
 Schedule::command('auth:clear-resets')->everyFifteenMinutes();

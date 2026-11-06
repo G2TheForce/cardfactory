@@ -1,7 +1,7 @@
 {{-- Miniature of a profile theme. Expects $theme and optional $accent. --}}
 @php $accent ??= $theme['accent']; @endphp
 <span class="block overflow-hidden rounded-lg ring-1 ring-black/10" style="background: {{ $theme['colors']['bg'] }}">
-    <span class="block h-7" style="background: {{ $theme['header'] === 'centered' ? $theme['colors']['bg'] : $accent }}"></span>
+    <span class="block h-7" style="background: {{ $theme['header'] === 'centered' ? $theme['colors']['bg'] : (isset($theme['gradient_to']) ? 'linear-gradient(120deg, '.$accent.', '.$theme['gradient_to'].')' : $accent) }}"></span>
     <span class="-mt-3 mx-auto block h-6 w-6 rounded-full ring-2" style="background: {{ $accent }}; --tw-ring-color: {{ $theme['colors']['surface'] }}"></span>
     <span class="mx-auto mt-1.5 block h-1.5 w-12 rounded-full" style="background: {{ $theme['colors']['text'] }}"></span>
     <span class="mx-auto mt-1 block h-1 w-8 rounded-full" style="background: {{ $theme['colors']['muted'] }}"></span>
