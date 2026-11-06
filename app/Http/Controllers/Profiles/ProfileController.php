@@ -182,7 +182,7 @@ class ProfileController extends Controller
         DB::beginTransaction();
         try {
             $draft = $this->profiles->update($profile, $data, $request->user());
-            $html = view('profiles.public', [
+            $html = view($this->profiles->publicView($draft), [
                 'profile' => $draft,
                 'p' => $this->profiles->publicData($draft),
                 'urls' => $this->profiles->urls($draft),
@@ -234,7 +234,7 @@ class ProfileController extends Controller
     {
         $this->authorize('view', $profile);
 
-        return view('profiles.public', [
+        return view($this->profiles->publicView($profile), [
             'profile' => $profile,
             'p' => $this->profiles->publicData($profile),
             'urls' => $this->profiles->urls($profile),

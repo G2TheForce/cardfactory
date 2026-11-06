@@ -50,6 +50,8 @@ class ProfileRequest extends FormRequest
             'accent' => ['sometimes', 'nullable', 'regex:/^#[0-9a-f]{6}$/'],
             'button_style' => ['sometimes', 'nullable', Rule::in(array_keys(ProfileThemes::BUTTON_STYLES))],
             'headline' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'greeting' => ['sometimes', 'nullable', 'string', 'max:60'],
+            'motto' => ['sometimes', 'nullable', 'string', 'max:220'],
             'background' => ['sometimes', 'nullable', 'regex:/^#[0-9a-f]{6}$/'],
             'header_style' => ['sometimes', 'nullable', Rule::in(array_keys(ProfileThemes::HEADER_STYLES))],
             'font' => ['sometimes', 'nullable', Rule::in(array_keys(ProfileThemes::FONTS))],

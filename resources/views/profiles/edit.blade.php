@@ -36,6 +36,8 @@
                   background: @js(old('background', $settings['background'] ?? '')),
                   themeBackgrounds: @js(collect(ProfileThemes::THEMES)->map(fn ($t) => $t['colors']['bg'])),
                   themeAccents: @js(collect(ProfileThemes::THEMES)->map(fn ($t) => $t['accent'])),
+                  studioThemes: @js(collect(ProfileThemes::THEMES)->filter(fn ($t, $k) => ProfileThemes::isStudio($k))->keys()),
+                  get isStudio() { return this.studioThemes.includes(this.theme); },
                   cardStyle: @js(old('card_style', $settings['card_style'] ?? '')),
                   effect: @js(old('effect', $settings['effect'] ?? '')),
                   glow: @js((string) old('glow', $settings['glow'] === null ? '' : (int) $settings['glow'])),
@@ -160,7 +162,7 @@
                                     <option value="0">Off</option>
                                 </select>
                             </div>
-                            <div>
+                            <div x-show="! isStudio">
                                 <label class="form-label" for="header_style">Header</label>
                                 <select id="header_style" name="header_style" class="select-base">
                                     <option value="">Theme default</option>
@@ -237,13 +239,25 @@
                                 @if ($settings['cover_path'])
                                     <label class="mt-2 flex items-center gap-2 text-xs text-gray-600"><input type="checkbox" name="remove_cover" value="1" class="checkbox-base"> Remove cover</label>
                                 @endif
-                                <p class="form-hint">Shown in the banner of Banner and Full gradient headers. Wide images work best.</p>
+                                <p class="form-hint">Shown in the banner of Banner and Full gradient headers, and behind the motto on Profile Studio. Wide images work best.</p>
                             </div>
                         </div>
                         <p class="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">New images appear in the preview once you save.</p>
                     </section>
 
-                    <x-field name="headline" label="Headline" :value="$settings['headline']" maxlength="120" hint="A short line under the name, e.g. what you help people with." />
+                    <x-field name="headline" label="Headline" :value="$settings['headline']" maxlength="120" hint="A short line under the name, e.g. what you help people with. Profile Studio shows it as the status chip above your name." />
+
+                    {{-- Profile Studio extras --}}
+                    <section x-show="isStudio" x-cloak class="space-y-5 rounded-2xl border border-brand-200 bg-brand-50/40 p-5">
+                        <div>
+                            <h3 class="flex items-center gap-1.5 text-sm font-semibold text-gray-900"><x-lucide-sparkles class="h-4 w-4 text-brand-500" /> Profile Studio</h3>
+                            <p class="text-xs text-gray-500">Your profile becomes an animated one-page website. Stats are counted up from custom fields with numbers (e.g. "Years experience: 15+") and follower counts. Services scroll in the ribbon; the cover image sits behind the motto.</p>
+                        </div>
+                        <div class="grid gap-5 sm:grid-cols-2">
+                            <x-field name="greeting" label="Greeting" :value="$settings['greeting']" maxlength="60" placeholder="Hello, I’m" hint="Shown above your name. Try “Namaste, I’m”." />
+                            <x-field name="motto" label="Motto" :value="$settings['motto']" maxlength="220" placeholder="Build slowly. Build to last." hint="A quote in the mountain band after About. Leave empty to hide the band." />
+                        </div>
+                    </section>
                 </div>
 
                 {{-- Social --}}

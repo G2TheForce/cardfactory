@@ -92,7 +92,7 @@ class DigitalProfileService
                 } elseif ($themeChanged) {
                     $settings['accent'] = ProfileThemes::get($profile->profile_theme)['accent'];
                 }
-                foreach (['button_style', 'headline', 'social_style', 'header_style', 'font', 'background', 'card_style', 'effect'] as $key) {
+                foreach (['button_style', 'headline', 'greeting', 'motto', 'social_style', 'header_style', 'font', 'background', 'card_style', 'effect'] as $key) {
                     if (array_key_exists($key, $data)) {
                         $settings[$key] = $data[$key] ?: null;
                     }
@@ -247,6 +247,12 @@ class DigitalProfileService
         ];
     }
 
+    /** The Blade view for the public page: a phone card, or a Profile Studio one-page site. */
+    public function publicView(DigitalProfile $profile): string
+    {
+        return ProfileThemes::isStudio($profile->profile_theme) ? 'profiles.public-studio' : 'profiles.public';
+    }
+
     public function publicUrl(DigitalProfile $profile): string
     {
         return route('profiles.public', $profile->slug);
@@ -307,6 +313,8 @@ class DigitalProfileService
             'designation' => $show('designation') && $c->designation !== $c->professional_title ? $c->designation : null,
             'department' => $show('department') ? $c->department : null,
             'headline' => $settings['headline'],
+            'greeting' => $settings['greeting'],
+            'motto' => $settings['motto'],
             'company' => $company?->name ?? ($c->business['company_name'] ?? null),
             'company_logo' => $company?->logo_path ? $disk->url($company->logo_path) : null,
             'photo' => $show('photo') && $c->profile_photo_path ? $disk->url($c->profile_photo_path) : null,
@@ -440,8 +448,12 @@ class DigitalProfileService
     {
         return [
             'accent' => ProfileThemes::get($theme)['accent'],
-            'button_style' => 'rounded',
+            // Profile Studio sites use pill buttons like the original design.
+            'button_style' => ProfileThemes::isStudio($theme) ? 'pill' : 'rounded',
             'headline' => null,
+            // Profile Studio extras: the line above the name and the motto band.
+            'greeting' => null,
+            'motto' => null,
             'cover_path' => null,
             'show_save_contact' => true,
             'show_qr' => true,
