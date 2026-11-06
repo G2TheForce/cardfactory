@@ -32,6 +32,7 @@ Route::middleware('auth')->group(function () {
             Route::put('/{profile}', 'update')->middleware('throttle:uploads')->name('update');
             Route::delete('/{profile}', 'destroy')->name('destroy');
             Route::get('/{profile}/preview', 'preview')->name('preview');
+            Route::put('/{profile}/draft-preview', 'draftPreview')->middleware('throttle:previews')->name('draft-preview');
             Route::post('/{profile}/site', 'exportSite')->middleware('throttle:saves')->name('site.export');
             Route::post('/{profile}/social/refresh', 'refreshSocial')->middleware('throttle:social-refresh')->name('social.refresh');
         });

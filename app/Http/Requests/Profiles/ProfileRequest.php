@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Profiles;
 
 use App\Services\DigitalProfileService;
+use App\Services\Social\SocialStatsService;
 use App\Support\ProfileThemes;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -29,6 +30,11 @@ class ProfileRequest extends FormRequest
                 $merge[$key] = strtolower(trim($this->input($key)));
             }
         }
+        if (is_array($this->input('social_links'))) {
+            // "@maya" and "instagram.com/maya" become full links.
+            $merge['social_links'] = collect($this->input('social_links'))
+                ->map(fn ($v, $network) => is_string($v) || $v === null ? SocialStatsService::normaliseLink((string) $network, $v) : $v)->all();
+        }
         if (is_array($this->input('social_manual'))) {
             // "12,400" and "12.4k" are how people write counts.
             $merge['social_manual'] = array_map(fn ($v) => is_string($v) ? self::parseCount($v) : $v, $this->input('social_manual'));
@@ -49,6 +55,15 @@ class ProfileRequest extends FormRequest
             'font' => ['sometimes', 'nullable', Rule::in(array_keys(ProfileThemes::FONTS))],
             'social_style' => ['sometimes', 'nullable', Rule::in(array_keys(ProfileThemes::SOCIAL_STYLES))],
             'show_follower_counts' => ['sometimes', 'boolean'],
+            'social_links' => ['sometimes', 'array'],
+            'social_links.*' => ['nullable', 'url:http,https', 'max:255'],
+            'card_style' => ['sometimes', 'nullable', Rule::in(array_keys(ProfileThemes::CARD_STYLES))],
+            'effect' => ['sometimes', 'nullable', Rule::in(array_keys(ProfileThemes::EFFECTS))],
+            'glow' => ['sometimes', 'nullable', Rule::in(['0', '1', 0, 1, true, false])],
+            'background_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
+            'remove_background_image' => ['sometimes', 'boolean'],
+            'background_overlay' => ['sometimes', 'integer', 'min:0', 'max:90'],
+            'background_blur' => ['sometimes', 'integer', 'min:0', 'max:20'],
             'social_manual' => ['sometimes', 'array'],
             'social_manual.*' => ['nullable', 'integer', 'min:0', 'max:10000000000'],
             'is_active' => ['sometimes', 'boolean'],
@@ -81,6 +96,7 @@ class ProfileRequest extends FormRequest
             'slug.regex' => 'Use lowercase letters, numbers and dashes (3–60 characters), starting and ending with a letter or number.',
             'accent.regex' => 'Pick a colour like #4f46e5.',
             'background.regex' => 'Pick a colour like #faf5ff.',
+            'social_links.*.url' => 'Enter a full link (https://…) or just the @handle.',
             'social_manual.*.integer' => 'Follower counts must be numbers, like 12400 or 12.4K.',
             'ctas.*.url.url' => 'Button links must start with http:// or https://.',
             'ctas.*.label.required' => 'Give every button a label.',

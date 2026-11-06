@@ -31,7 +31,42 @@ class SocialStatsService
         'x' => ['verb' => 'Follow', 'noun' => 'followers', 'color' => '#000000'],
         'linkedin' => ['verb' => 'Connect', 'noun' => 'followers', 'color' => '#0a66c2'],
         'github' => ['verb' => 'Follow', 'noun' => 'followers', 'color' => '#24292f'],
+        'threads' => ['verb' => 'Follow', 'noun' => 'followers', 'color' => '#000000'],
+        'telegram' => ['verb' => 'Join', 'noun' => 'subscribers', 'color' => '#229ed9'],
+        'pinterest' => ['verb' => 'Follow', 'noun' => 'followers', 'color' => '#e60023'],
+        'snapchat' => ['verb' => 'Add', 'noun' => 'subscribers', 'color' => '#fffc00', 'text' => '#111111'],
+        'twitch' => ['verb' => 'Follow', 'noun' => 'followers', 'color' => '#9146ff'],
+        'dribbble' => ['verb' => 'Follow', 'noun' => 'followers', 'color' => '#ea4c89'],
+        'behance' => ['verb' => 'Follow', 'noun' => 'followers', 'color' => '#1769ff'],
     ];
+
+    /** Where a bare handle ("@maya" or "maya") points for each network. */
+    public const PROFILE_URLS = [
+        'linkedin' => 'https://www.linkedin.com/in/', 'facebook' => 'https://www.facebook.com/', 'instagram' => 'https://www.instagram.com/',
+        'x' => 'https://x.com/', 'tiktok' => 'https://www.tiktok.com/@', 'youtube' => 'https://www.youtube.com/@', 'github' => 'https://github.com/',
+        'threads' => 'https://www.threads.net/@', 'telegram' => 'https://t.me/', 'pinterest' => 'https://www.pinterest.com/',
+        'snapchat' => 'https://www.snapchat.com/add/', 'twitch' => 'https://www.twitch.tv/', 'dribbble' => 'https://dribbble.com/', 'behance' => 'https://www.behance.net/',
+    ];
+
+    /** Turn "@maya" or "instagram.com/maya" into a full link; full links pass through. */
+    public static function normaliseLink(string $network, ?string $value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+        if (preg_match('#^https?://#i', $value)) {
+            return $value;
+        }
+        if (preg_match('#^[a-z0-9-]+(\.[a-z0-9-]+)+/#i', $value)) {
+            return 'https://'.$value;
+        }
+        if (isset(self::PROFILE_URLS[$network]) && preg_match('/^@?[A-Za-z0-9._-]{1,100}$/', $value)) {
+            return self::PROFILE_URLS[$network].ltrim($value, '@');
+        }
+
+        return $value;
+    }
 
     /** Whether counts for this network can be fetched with the current configuration. */
     public function available(string $network): bool

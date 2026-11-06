@@ -9,7 +9,9 @@ final class CustomerFields
 
     public const SOCIAL = [
         'linkedin' => 'LinkedIn', 'facebook' => 'Facebook', 'instagram' => 'Instagram', 'x' => 'X (Twitter)',
-        'tiktok' => 'TikTok', 'youtube' => 'YouTube', 'github' => 'GitHub',
+        'tiktok' => 'TikTok', 'youtube' => 'YouTube', 'github' => 'GitHub', 'threads' => 'Threads',
+        'telegram' => 'Telegram', 'pinterest' => 'Pinterest', 'snapchat' => 'Snapchat', 'twitch' => 'Twitch',
+        'dribbble' => 'Dribbble', 'behance' => 'Behance',
     ];
 
     public const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];

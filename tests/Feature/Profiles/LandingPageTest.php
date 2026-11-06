@@ -10,6 +10,7 @@ use App\Services\Social\SocialHandle;
 use App\Services\Social\SocialStatsService;
 use App\Support\ProfileThemes;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -54,7 +55,7 @@ class LandingPageTest extends TestCase
         $admin = $this->userWithRole(User::ROLE_ADMIN);
 
         $this->actingAs($admin)->get(route('profiles.edit', $profile))->assertOk()
-            ->assertSee('Personal themes')->assertSee('Follower counts')->assertSee('TikTok has no public API');
+            ->assertSee('Personal themes')->assertSee('Live preview')->assertSee('TikTok has no public API');
 
         $this->put(route('profiles.update', $profile), [
             'background' => '#101010', 'header_style' => 'centered', 'font' => 'rounded', 'social_style' => 'buttons',
@@ -82,6 +83,63 @@ class LandingPageTest extends TestCase
         // Counts can be hidden, and icons used instead of buttons.
         $this->put(route('profiles.update', $profile), ['social_style' => 'icons', 'show_follower_counts' => 0]);
         $this->get(route('profiles.public', $profile->slug))->assertDontSee('Subscribe on YouTube')->assertDontSee('12.4K');
+    }
+
+    public function test_social_accounts_are_added_on_the_profile(): void
+    {
+        $profile = $this->profile();
+        $admin = $this->userWithRole(User::ROLE_ADMIN);
+
+        $this->actingAs($admin)->put(route('profiles.update', $profile), ['social_links' => [
+            'facebook' => '@maya.rivers', 'instagram' => 'instagram.com/maya', 'telegram' => 'https://t.me/mayachannel', 'linkedin' => '', 'myspace' => 'https://myspace.com/x',
+        ]])->assertSessionHasNoErrors();
+
+        $links = $profile->customer->fresh()->social_links;
+        $this->assertSame(['facebook' => 'https://www.facebook.com/maya.rivers', 'instagram' => 'https://instagram.com/maya', 'telegram' => 'https://t.me/mayachannel'], $links);
+
+        $this->get(route('profiles.public', $profile->slug))->assertSee('Follow on Facebook')->assertSee('Join on Telegram');
+        $this->put(route('profiles.update', $profile), ['social_links' => ['x' => 'not a link at all']])->assertSessionHasErrors('social_links.x');
+    }
+
+    public function test_background_image_style_and_effects(): void
+    {
+        $profile = $this->profile();
+        $admin = $this->userWithRole(User::ROLE_ADMIN);
+
+        $this->actingAs($admin)->put(route('profiles.update', $profile), [
+            'background_image' => UploadedFile::fake()->image('beach.jpg', 1600, 1000),
+            'background_overlay' => 60, 'background_blur' => 8, 'card_style' => 'glass', 'effect' => 'grid', 'glow' => '1',
+        ])->assertSessionHasNoErrors();
+
+        $settings = $profile->fresh()->settings;
+        Storage::disk('public')->assertExists($settings['background_image_path']);
+        $this->assertSame([60, 8, 'glass', 'grid', true], [$settings['background_overlay'], $settings['background_blur'], $settings['card_style'], $settings['effect'], $settings['glow']]);
+
+        $this->get(route('profiles.public', $profile->slug))
+            ->assertSee('pf-backdrop-img', false)->assertSee('blur(8px)', false)->assertSee('backdrop-filter', false)->assertSee('pf-grid', false);
+
+        $this->put(route('profiles.update', $profile), ['background_overlay' => 95])->assertSessionHasErrors('background_overlay');
+
+        $path = $settings['background_image_path'];
+        $this->put(route('profiles.update', $profile), ['remove_background_image' => 1]);
+        $this->assertNull($profile->fresh()->settings['background_image_path']);
+        Storage::disk('public')->assertMissing($path);
+    }
+
+    public function test_live_preview_renders_unsaved_changes_without_saving(): void
+    {
+        $profile = $this->profile(['github' => 'https://github.com/maya']);
+        $admin = $this->userWithRole(User::ROLE_ADMIN);
+
+        $this->actingAs($admin)->put(route('profiles.draft-preview', $profile), [
+            'profile_theme' => 'cyber', 'headline' => 'Building the future', 'social_links' => ['facebook' => '@maya'],
+        ])->assertOk()->assertSee('Building the future')->assertSee('Follow on Facebook')->assertSee('pf-grid', false);
+
+        $this->assertSame('creator', $profile->fresh()->profile_theme);
+        $this->assertNull($profile->fresh()->settings['headline'] ?? null);
+        $this->assertSame(['github' => 'https://github.com/maya'], $profile->customer->fresh()->social_links);
+
+        $this->actingAs($this->userWithRole(User::ROLE_CUSTOMER))->put(route('profiles.draft-preview', $profile), [])->assertForbidden();
     }
 
     public function test_counts_are_fetched_from_official_apis(): void

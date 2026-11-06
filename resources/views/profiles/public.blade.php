@@ -7,6 +7,8 @@
     $t = $p['theme'];
     $radius = ['rounded' => '0.875rem', 'pill' => '9999px', 'square' => '0.375rem'][$p['button_style']] ?? '0.875rem';
     $serif = $t['font'] === 'serif';
+    $hasBackdrop = $p['background_image'] || $t['effect'] !== 'none';
+    $gradientTo = $t['gradient_to'] ?? 'color-mix(in srgb, var(--accent) 55%, #111827)';
     $subtitle = collect([$p['title'], $p['company']])->filter()->implode(' · ');
     $qrSvg = $p['show_qr'] ? app(QRCodeService::class)->svg($urls['qr'], 240, '#111827', '#ffffff', 2, 'M') : null;
     $days = ['monday' => 'Monday', 'tuesday' => 'Tuesday', 'wednesday' => 'Wednesday', 'thursday' => 'Thursday', 'friday' => 'Friday', 'saturday' => 'Saturday', 'sunday' => 'Sunday'];
@@ -56,13 +58,53 @@
         .pf-chip { background: color-mix(in srgb, var(--accent) 10%, var(--surface)); color: var(--text); }
         .pf-icon { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); color: var(--accent); }
         .pf-row + .pf-row { border-top: 1px solid var(--border); }
-        .pf-hero { background: linear-gradient(140deg, var(--accent), {{ isset($t['gradient_to']) ? $t['gradient_to'] : 'color-mix(in srgb, var(--accent) 55%, #111827)' }}); }
+        .pf-hero { background: linear-gradient(140deg, var(--accent), {{ $gradientTo }}); }
         @if ($serif) .pf-heading { font-family: {!! $t['font_stack'] !!}; letter-spacing: -0.01em; } @elseif ($t['font'] !== 'sans') body { font-family: {!! $t['font_stack'] !!}; } @endif
-        .pf-social { border-radius: var(--radius); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14); }
+        .pf-social { border-radius: var(--radius); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14); }
         .pf-social:hover { filter: brightness(1.08); }
+        .pf-social-sub { opacity: 0.8; }
+
+        /* Backdrop: page background image and effects, fixed behind the content. */
+        .pf-backdrop { position: fixed; inset: 0; z-index: -1; overflow: hidden; background: var(--bg); }
+        .pf-backdrop-img { position: absolute; inset: -40px; background-size: cover; background-position: center; }
+        .pf-backdrop-overlay { position: absolute; inset: 0; }
+        .pf-aurora span { position: absolute; width: 70vmax; height: 70vmax; border-radius: 9999px; filter: blur(90px); opacity: {{ $t['dark'] ? '0.45' : '0.35' }}; animation: pf-float 22s ease-in-out infinite alternate; }
+        .pf-aurora span:nth-child(1) { background: var(--accent); top: -30vmax; left: -20vmax; }
+        .pf-aurora span:nth-child(2) { background: {{ $gradientTo }}; bottom: -35vmax; right: -25vmax; animation-delay: -7s; }
+        .pf-aurora span:nth-child(3) { background: color-mix(in srgb, var(--accent) 50%, {{ $gradientTo }}); top: 35%; left: 30%; width: 45vmax; height: 45vmax; animation-delay: -14s; }
+        @keyframes pf-float { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(6vmax, 4vmax) scale(1.12); } 100% { transform: translate(-4vmax, 8vmax) scale(0.95); } }
+        @media (prefers-reduced-motion: reduce) { .pf-aurora span { animation: none; } }
+        .pf-grid { position: absolute; inset: 0; background-image: linear-gradient(color-mix(in srgb, var(--accent) 16%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--accent) 16%, transparent) 1px, transparent 1px); background-size: 32px 32px; mask-image: radial-gradient(ellipse at top, #000 30%, transparent 75%); }
+        .pf-dots { position: absolute; inset: 0; background-image: radial-gradient(color-mix(in srgb, var(--accent) 35%, transparent) 1px, transparent 1.5px); background-size: 18px 18px; }
+        .pf-mesh { position: absolute; inset: 0; background: radial-gradient(at 15% 10%, color-mix(in srgb, var(--accent) 40%, transparent) 0, transparent 50%), radial-gradient(at 85% 20%, color-mix(in srgb, {{ $gradientTo }} 40%, transparent) 0, transparent 50%), radial-gradient(at 50% 95%, color-mix(in srgb, var(--accent) 25%, transparent) 0, transparent 55%); }
+        @if ($hasBackdrop) .pf-shell { background: transparent !important; } @endif
+
+        /* Card styles */
+        @if ($t['card_style'] === 'glass')
+            .pf-card { background: color-mix(in srgb, var(--surface) {{ $t['dark'] ? '55%' : '62%' }}, transparent); border-color: {{ $t['dark'] ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.7)' }}; -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%); box-shadow: 0 8px 32px rgba(0, 0, 0, {{ $t['dark'] ? '0.35' : '0.08' }}); }
+        @elseif ($t['card_style'] === 'outline')
+            .pf-card { background: color-mix(in srgb, var(--surface) 35%, transparent); border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+        @endif
+        @if ($t['glow'])
+            .pf-btn, .pf-social { box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent), 0 8px 28px -6px color-mix(in srgb, var(--accent) 70%, transparent); }
+            .pf-avatar { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 35%, transparent), 0 0 48px color-mix(in srgb, var(--accent) 55%, transparent) !important; }
+            .pf-glow-text { text-shadow: 0 0 24px color-mix(in srgb, var(--accent) 60%, transparent); }
+        @endif
     </style>
 </head>
 <body class="min-h-screen antialiased" x-data="{ qr: false, photo: null, shared: false }">
+@if ($hasBackdrop)
+    <div class="pf-backdrop" aria-hidden="true">
+        @if ($t['effect'] === 'aurora')<div class="pf-aurora"><span></span><span></span><span></span></div>@endif
+        @if ($t['effect'] === 'mesh')<div class="pf-mesh"></div>@endif
+        @if ($p['background_image'])
+            <div class="pf-backdrop-img" style="background-image: url('{{ $p['background_image'] }}'); filter: blur({{ $p['background_blur'] }}px)"></div>
+            <div class="pf-backdrop-overlay" style="background: color-mix(in srgb, var(--bg) {{ $p['background_overlay'] }}%, transparent)"></div>
+        @endif
+        @if ($t['effect'] === 'grid')<div class="pf-grid"></div>@endif
+        @if ($t['effect'] === 'dots')<div class="pf-dots"></div>@endif
+    </div>
+@endif
 @if ($preview)
     <div class="sticky top-0 z-30 bg-gray-900 px-4 py-2 text-center text-xs font-medium text-white">
         Preview{{ $available ? '' : ' · this profile is not live, visitors see a "not available" page' }} · visits here aren't counted
@@ -70,7 +112,7 @@
 @endif
 
 <main class="mx-auto w-full max-w-md pb-10 sm:py-8">
-    <div class="overflow-hidden sm:rounded-[2rem] sm:shadow-2xl sm:ring-1 sm:ring-black/5" style="background: var(--bg)">
+    <div class="pf-shell overflow-hidden sm:rounded-[2rem] {{ $hasBackdrop ? '' : 'sm:shadow-2xl sm:ring-1 sm:ring-black/5' }}" style="background: var(--bg)">
 
         {{-- Header --}}
         @if ($t['header'] === 'cover')
@@ -88,7 +130,7 @@
                 @if ($p['cover'])<img src="{{ $p['cover'] }}" alt="" class="absolute inset-0 h-full w-full object-cover opacity-30">@endif
                 <div class="relative">
                     @include('profiles.partials.public-photo', ['size' => 'h-28 w-28', 'ring' => 'ring-4 ring-white/40'])
-                    <h1 class="pf-heading mt-4 text-3xl font-extrabold tracking-tight">{{ $p['name'] }}</h1>
+                    <h1 class="pf-heading pf-glow-text mt-4 text-3xl font-extrabold tracking-tight">{{ $p['name'] }}</h1>
                     @if ($p['title'])<p class="mt-1 text-base font-medium text-white/90">{{ $p['title'] }}</p>@endif
                     @if ($p['company'])<p class="mt-0.5 text-sm text-white/75">{{ $p['company'] }}{{ $p['department'] ? ' · '.$p['department'] : '' }}</p>@endif
                 </div>
@@ -102,8 +144,8 @@
 
         @if ($t['header'] !== 'hero')
             <div class="px-6 pt-4 text-center">
-                <h1 class="pf-heading text-[1.75rem] font-bold leading-tight tracking-tight">{{ $p['name'] }}</h1>
-                @if ($p['title'])<p class="mt-1 text-base font-medium" style="color: var(--accent)">{{ $p['title'] }}</p>@endif
+                <h1 class="pf-heading pf-glow-text text-[1.75rem] font-bold leading-tight tracking-tight">{{ $p['name'] }}</h1>
+                @if ($p['title'])<p class="mt-1 text-base font-medium" style="color: {{ $t['dark'] ? 'color-mix(in srgb, var(--accent) 55%, var(--text))' : 'var(--accent)' }}">{{ $p['title'] }}</p>@endif
                 @if ($p['company'] || $p['department'])
                     <p class="pf-muted mt-1 flex items-center justify-center gap-1.5 text-sm">
                         @if ($p['company_logo'] && $t['header'] !== 'cover')<img src="{{ $p['company_logo'] }}" alt="" class="h-5 w-5 rounded object-contain">@endif
@@ -201,15 +243,15 @@
                                 <section class="space-y-2.5" aria-label="Social media">
                                     @foreach ($p['social'] as $s)
                                         <a href="{{ $s['url'] }}" target="_blank" rel="noopener me" data-track="social" data-target="{{ $s['key'] }}"
-                                           class="pf-social flex items-center gap-3 px-4 py-3 shadow-sm transition" style="background: {{ $s['background'] }}">
-                                            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/15">
+                                           class="pf-social flex items-center gap-3 px-4 py-3 shadow-sm transition" style="background: {{ $s['background'] }}; color: {{ $s['text'] }}">
+                                            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full" style="background: color-mix(in srgb, currentColor 15%, transparent)">
                                                 <x-dynamic-component :component="'lucide-'.(IconLibrary::SOCIAL[$s['key']] ?? 'link')" class="h-5 w-5" />
                                             </span>
                                             <span class="min-w-0 flex-1">
                                                 <span class="block text-[15px] font-semibold leading-tight">{{ $s['verb'] }} on {{ $s['label'] }}</span>
-                                                @if ($s['count_label'])<span class="block text-xs text-white/80">{{ $s['count_label'] }}</span>@endif
+                                                @if ($s['count_label'])<span class="pf-social-sub block text-xs">{{ $s['count_label'] }}</span>@endif
                                             </span>
-                                            <x-lucide-chevron-right class="h-4 w-4 shrink-0 text-white/70" />
+                                            <x-lucide-chevron-right class="pf-social-sub h-4 w-4 shrink-0" />
                                         </a>
                                     @endforeach
                                 </section>

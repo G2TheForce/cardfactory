@@ -18,6 +18,8 @@ use App\Services\Social\SocialStatsService;
 use App\Support\ProfileThemes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -147,7 +149,7 @@ class ProfileController extends Controller
 
     public function update(ProfileRequest $request, DigitalProfile $profile): RedirectResponse
     {
-        $data = $request->safe()->except(['cover', 'portfolio', 'card_design']);
+        $data = $request->safe()->except(['cover', 'background_image', 'portfolio', 'card_design']);
         // The web form omits an empty button list entirely.
         if ($request->boolean('_form')) {
             $data += ['ctas' => []];
@@ -160,10 +162,38 @@ class ProfileController extends Controller
 
         $this->profiles->update($profile, $data, $request->user(), [
             'cover' => $request->file('cover'),
+            'background_image' => $request->file('background_image'),
             'portfolio' => $request->file('portfolio', []),
         ]);
 
         return redirect()->route('profiles.edit', [$profile, 'tab' => $request->input('_tab')])->with('success', 'Profile saved.');
+    }
+
+    /**
+     * Live preview of unsaved edits: applies the form to the profile inside a
+     * transaction, renders the public page, then rolls everything back.
+     * Uploaded files are ignored; images show once saved.
+     */
+    public function draftPreview(ProfileRequest $request, DigitalProfile $profile): Response
+    {
+        $data = $request->safe()->except(['cover', 'background_image', 'portfolio', 'card_design', 'remove_cover', 'remove_background_image', 'portfolio_remove']);
+        $data += ['ctas' => []];
+
+        DB::beginTransaction();
+        try {
+            $draft = $this->profiles->update($profile, $data, $request->user());
+            $html = view('profiles.public', [
+                'profile' => $draft,
+                'p' => $this->profiles->publicData($draft),
+                'urls' => $this->profiles->urls($draft),
+                'preview' => true,
+                'available' => $this->profiles->isAvailable($draft),
+            ])->render();
+        } finally {
+            DB::rollBack();
+        }
+
+        return response($html);
     }
 
     /** Download the profile as a static website to host anywhere. */
