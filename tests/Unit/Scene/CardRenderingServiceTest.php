@@ -59,8 +59,8 @@ class CardRenderingServiceTest extends TestCase
     public function test_every_library_theme_renders_valid_svg(): void
     {
         $themes = ThemeLibrary::all();
-        $this->assertCount(20, $themes);
-        $this->assertCount(20, array_unique(array_column($themes, 'slug')));
+        $this->assertCount(28, $themes);
+        $this->assertCount(28, array_unique(array_column($themes, 'slug')));
 
         foreach ($themes as $theme) {
             foreach (['front', 'back'] as $side) {

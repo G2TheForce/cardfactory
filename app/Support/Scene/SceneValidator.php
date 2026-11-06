@@ -238,14 +238,14 @@ class SceneValidator
         if (in_array($src, ['{{logo}}', '{{photo}}'], true)) {
             return $src;
         }
-        if (str_starts_with($src, '/storage/') && ! str_contains($src, '..')) {
+        if ((str_starts_with($src, '/storage/') || str_starts_with($src, '/images/card-themes/')) && ! str_contains($src, '..')) {
             return $src;
         }
         if (filter_var($src, FILTER_VALIDATE_URL) && preg_match('#^https://#i', $src)) {
             return $src;
         }
 
-        $this->fail($path, 'Images must be uploaded assets, https URLs, or the {{logo}} / {{photo}} fields.');
+        $this->fail($path, 'Images must be uploaded assets, built-in theme artwork, https URLs, or the {{logo}} / {{photo}} fields.');
 
         return null;
     }

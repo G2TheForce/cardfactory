@@ -167,7 +167,7 @@ class ThemeManagementService
                 'palette' => $config['palette'] ?? [],
                 'corner_radius_mm' => (float) ($config['layout']['corner_radius_mm'] ?? 0),
                 'clip_corners' => true,
-            ] + $options;
+            ] + $options + ['data' => $config['layout']['sample'] ?? []];
 
             return [
                 'front' => $this->renderer->render($config['front'] ?? Scene::emptySide(), $base + ['title' => $theme->name.' front']),

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 150" width="200" height="150">
+<defs><linearGradient id="eg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e9c27a"/><stop offset="1" stop-color="#a8742c"/></linearGradient></defs>
+<path d="M28 132 A 74 74 0 1 1 172 132" stroke="url(#eg)" stroke-width="5" fill="none" stroke-linecap="round"/>
+<g transform="translate(36 0) scale(1 1)"><path d="M0 128 C 14 118, 28 104, 36 86" stroke="url(#eg)" stroke-width="3" fill="none"/><path transform="rotate(-30 8 120)" d="M8 120 c 6 -10, 16 -12, 22 -10 c -4 8, -14 14, -22 10 Z" fill="url(#eg)"/><path transform="rotate(-50 18 110)" d="M18 110 c 6 -10, 16 -12, 22 -10 c -4 8, -14 14, -22 10 Z" fill="url(#eg)"/><path transform="rotate(-70 28 98)" d="M28 98 c 6 -10, 16 -12, 22 -10 c -4 8, -14 14, -22 10 Z" fill="url(#eg)"/></g><g transform="translate(164 0) scale(-1 1)"><path d="M0 128 C 14 118, 28 104, 36 86" stroke="url(#eg)" stroke-width="3" fill="none"/><path transform="rotate(-30 8 120)" d="M8 120 c 6 -10, 16 -12, 22 -10 c -4 8, -14 14, -22 10 Z" fill="url(#eg)"/><path transform="rotate(-50 18 110)" d="M18 110 c 6 -10, 16 -12, 22 -10 c -4 8, -14 14, -22 10 Z" fill="url(#eg)"/><path transform="rotate(-70 28 98)" d="M28 98 c 6 -10, 16 -12, 22 -10 c -4 8, -14 14, -22 10 Z" fill="url(#eg)"/></g>
+<g transform="translate(52 22) scale(4)" fill="none" stroke="#fbeee0" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/>
+  <path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/>
+  <path d="m2.1 21.8 6.4-6.3"/>
+  <path d="m19 5-7 7"/></g>
+</svg>

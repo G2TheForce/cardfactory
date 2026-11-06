@@ -35,6 +35,7 @@ return [
         'Oswald' => ['category' => 'display', 'weights' => [300, 400, 500, 600, 700]],
         'Archivo Black' => ['category' => 'display', 'weights' => [400]],
         'Great Vibes' => ['category' => 'handwriting', 'weights' => [400]],
+        'Kaushan Script' => ['category' => 'handwriting', 'weights' => [400]],
         'Dancing Script' => ['category' => 'handwriting', 'weights' => [400, 500, 600, 700]],
         'JetBrains Mono' => ['category' => 'monospace', 'weights' => [300, 400, 500, 700]],
         'IBM Plex Mono' => ['category' => 'monospace', 'weights' => [300, 400, 500, 600, 700]],

@@ -31,7 +31,11 @@
                                 class="rounded-xl p-2 text-left ring-2 transition"
                                 :class="theme === @js($t->ulid) ? 'ring-brand-500 bg-brand-50' : 'ring-transparent hover:ring-gray-200'"
                                 aria-label="Start from {{ $t->name }}">
-                            <x-card-preview :svg="$previews[$t->id]['front']" />
+                            @if ((float) $t->height_mm > (float) $t->width_mm)
+                                <div class="flex justify-center gap-1.5"><div class="w-[39.8%]"><x-card-preview :svg="$previews[$t->id]['front']" /></div><div class="w-[39.8%]"><x-card-preview :svg="$previews[$t->id]['back']" /></div></div>
+                            @else
+                                <x-card-preview :svg="$previews[$t->id]['front']" />
+                            @endif
                             <span class="mt-2 block truncate text-xs font-semibold text-gray-800">{{ $t->name }}</span>
                         </button>
                     @endforeach

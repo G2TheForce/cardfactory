@@ -23,10 +23,10 @@ class ThemeManagementTest extends TestCase
         return CardTheme::where('slug', $slug)->firstOrFail();
     }
 
-    public function test_seeder_creates_twenty_published_editable_themes(): void
+    public function test_seeder_creates_the_published_editable_theme_library(): void
     {
-        $this->assertSame(20, CardTheme::published()->where('is_system', true)->count());
-        $this->assertSame(17, CardTheme::distinct('category')->count('category'));
+        $this->assertSame(28, CardTheme::published()->where('is_system', true)->count());
+        $this->assertSame(19, CardTheme::distinct('category')->count('category'));
 
         $theme = $this->theme();
         $this->assertNotEmpty($theme->front['elements']);
@@ -35,7 +35,7 @@ class ThemeManagementTest extends TestCase
         $this->assertArrayHasKey('heading', $theme->fonts);
 
         $this->seed(ThemeSeeder::class); // idempotent
-        $this->assertSame(20, CardTheme::count());
+        $this->assertSame(28, CardTheme::count());
     }
 
     public function test_gallery_lists_published_themes_and_filters_by_category(): void

@@ -308,7 +308,7 @@ class DesignController extends Controller
     {
         $data = match ($fields) {
             'raw' => $this->designs->rawFieldData(),
-            'sample' => Scene::sampleData(),
+            'sample' => $this->designs->sampleData($design),
             default => $this->designs->mergeData($design),
         };
 
