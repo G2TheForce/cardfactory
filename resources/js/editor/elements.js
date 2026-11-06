@@ -91,3 +91,43 @@ export function makeElement(kind, card, opts = {}) {
             throw new Error('Unknown element kind ' + kind);
     }
 }
+
+/**
+ * Move a newly added element to the free spot nearest the card centre, so it
+ * doesn't land on top of existing content. Large elements (backgrounds, frames)
+ * don't count as occupied space. When the card is full, the spot that covers
+ * the least existing content wins.
+ */
+export function placeInFreeSpot(el, elements, card) {
+    const margin = Math.min(card.safe ?? 3, (card.width - el.width) / 2, (card.height - el.height) / 2);
+    if (margin < 0) return el;
+    const cardArea = card.width * card.height;
+    const gap = 1.5;
+    const boxes = elements
+        .filter((e) => e.id !== el.id && !e.hidden && e.type !== 'pattern' && e.width * e.height < cardArea * 0.4)
+        .map((e) => ({ x1: e.x - gap, y1: e.y - gap, x2: e.x + e.width + gap, y2: e.y + e.height + gap }));
+    const covered = (x, y) => boxes.reduce((sum, b) => {
+        const w = Math.min(x + el.width, b.x2) - Math.max(x, b.x1);
+        const h = Math.min(y + el.height, b.y2) - Math.max(y, b.y1);
+        return sum + (w > 0 && h > 0 ? w * h : 0);
+    }, 0);
+
+    if (covered(el.x, el.y) === 0) return el;
+
+    const cx = el.x;
+    const cy = el.y;
+    let best = null;
+    for (let x = margin; x + el.width <= card.width - margin + 0.01; x += 1) {
+        for (let y = margin; y + el.height <= card.height - margin + 0.01; y += 1) {
+            // Prefer spots below the centre, so new text follows what is already there.
+            const score = covered(x, y) * 1000 + (x - cx) ** 2 + (y - cy) ** 2 * (y < cy ? 3 : 1);
+            if (!best || score < best.score) best = { x, y, score };
+        }
+    }
+    if (best) {
+        el.x = Math.round(best.x * 10) / 10;
+        el.y = Math.round(best.y * 10) / 10;
+    }
+
+    return el;
+}

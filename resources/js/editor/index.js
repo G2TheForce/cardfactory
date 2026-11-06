@@ -1,5 +1,5 @@
 import { Stage } from './stage';
-import { makeElement, textHeight, uid, PT_TO_MM } from './elements';
+import { makeElement, placeInFreeSpot, textHeight, uid, PT_TO_MM } from './elements';
 
 /**
  * Alpine component for the card design studio. Editor state (the scene JSON)
@@ -278,6 +278,7 @@ function cardEditor(config) {
                 opts = { ...opts, fontFamily: kind === 'heading' ? this.fontsHeading : this.fontsBody };
             }
             const el = makeElement(kind, this.design, opts);
+            if (kind !== 'pattern') placeInFreeSpot(el, this.elements, this.design);
             if (kind === 'pattern') this.elements.unshift(el); else this.elements.push(el);
             this.selectedIds = [el.id];
             this.changed();
