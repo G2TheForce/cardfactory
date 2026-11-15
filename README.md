@@ -276,6 +276,33 @@ the customer marked "show on profile".
   page (404) for the public page, QR and NFC links. Profiles are hidden from search
   engines unless the owner opts in.
 
+## Landing pages
+
+**Customers → Landing pages** (`/landing-pages`) is a separate designer for full,
+multi-section marketing pages for a customer's business. Digital profiles stay the
+one-person card page; landing pages are the business website.
+
+- **Templates**: café & restaurant, real estate, consultant & agency, salon & spa,
+  fitness studio, product launch and blank. The customer's company name, email,
+  phone, WhatsApp and address are filled in when the page is created.
+- **Sections** (`App\Support\LandingPages\Sections`): hero (centred, text + image or
+  full background image), about, services, gallery, numbers, testimonials, pricing,
+  FAQ, call to action and contact. Add, reorder, duplicate, hide and delete them in the
+  designer, with a live preview of unsaved changes (desktop and phone sizes). Every
+  save is cleaned field by field: unknown fields are dropped, links must be web, mail,
+  phone or on-page anchors, and images must belong to the page's own upload folder.
+- **Style**: eight palettes, main and accent colours, light / tinted / dark background,
+  five font pairings, button shape and scroll animations. **Apply brand kit** uses a
+  kit's colours, logo and company details.
+- **Publishing**: pages start as drafts and go live at `/p/{slug}`. **Download ZIP**
+  exports a static website for Netlify Drop, GitHub Pages and the like (the enquiry
+  form becomes an email button there).
+- **Enquiries**: the contact form saves leads to the page's screen and emails the
+  owner (page setting, else the contact section's email, else the customer's).
+  It is rate limited and has a honeypot field.
+- Permission `landing-pages.manage` (Admin) builds pages for any customer; customers
+  build and edit their own; designers see pages of their assigned customers.
+
 ## Exports
 
 Open a design and choose **Export** (editor top bar or the designs list). Exports run on

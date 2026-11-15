@@ -1,6 +1,7 @@
 import Alpine from 'alpinejs';
 import collapse from '@alpinejs/collapse';
 import { initCharts } from './modules/charts';
+import landingEditor from './modules/landing-editor';
 
 window.Alpine = Alpine;
 Alpine.plugin(collapse);
@@ -25,6 +26,8 @@ Alpine.data('copyToClipboard', (text) => ({
         }
     },
 }));
+
+Alpine.data('landingEditor', landingEditor);
 
 Alpine.start();
 

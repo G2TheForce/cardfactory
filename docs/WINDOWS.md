@@ -104,8 +104,8 @@ npm run build
 php artisan smartcard:update
 ```
 
-`smartcard:update` runs new migrations, adds new built-in card themes and permissions, and
-clears cached config, routes and views. It is safe to run any time. Start both windows again
+`smartcard:update` runs new migrations (for example the landing page tables), adds new built-in
+card themes and permissions (such as `landing-pages.manage`), and clears cached config, routes and views. It is safe to run any time. Start both windows again
 and reload the browser with **Ctrl+F5**.
 
 If a new feature still doesn't appear, check that you have the latest code:

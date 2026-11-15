@@ -65,6 +65,11 @@ class Customer extends Model
         return $this->hasMany(DigitalProfile::class);
     }
 
+    public function landingPages(): HasMany
+    {
+        return $this->hasMany(LandingPage::class);
+    }
+
     public function nfcAssignments(): HasMany
     {
         return $this->hasMany(NfcAssignment::class);
