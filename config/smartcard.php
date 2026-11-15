@@ -32,6 +32,7 @@ return [
         'imports.manage' => 'Run bulk imports and batch generation',
         'analytics.view-any' => 'View analytics for every customer',
         'revenue.view' => 'View revenue statistics',
+        'assistant.use' => 'Chat with the AI assistant',
     ],
 
     'roles' => [
@@ -40,16 +41,16 @@ return [
             'dashboard.view', 'users.manage', 'activity.view', 'customers.view-any', 'customers.manage',
             'themes.manage', 'themes.publish', 'designs.view-any', 'designs.manage', 'profiles.manage',
             'landing-pages.manage', 'nfc.manage', 'inventory.manage', 'orders.manage', 'exports.manage', 'imports.manage',
-            'analytics.view-any', 'revenue.view',
+            'analytics.view-any', 'revenue.view', 'assistant.use',
         ]],
         'designer' => ['label' => 'Designer', 'permissions' => [
-            'dashboard.view', 'themes.manage', 'designs.assigned', 'exports.manage',
+            'dashboard.view', 'themes.manage', 'designs.assigned', 'exports.manage', 'assistant.use',
         ]],
         'sales-manager' => ['label' => 'Sales Manager', 'permissions' => [
             'dashboard.view', 'customers.view-any', 'customers.manage', 'nfc.manage', 'inventory.manage',
-            'orders.manage', 'imports.manage', 'analytics.view-any', 'revenue.view',
+            'orders.manage', 'imports.manage', 'analytics.view-any', 'revenue.view', 'assistant.use',
         ]],
-        'customer' => ['label' => 'Customer', 'permissions' => []],
+        'customer' => ['label' => 'Customer', 'permissions' => ['assistant.use']],
     ],
 
     // Role given to self-registered accounts.
@@ -107,6 +108,15 @@ return [
         // Request header holding the visitor's country code, set by a trusted proxy/CDN
         // (Cloudflare sends CF-IPCountry). Leave empty to skip country analytics.
         'country_header' => env('ANALYTICS_COUNTRY_HEADER', 'CF-IPCountry'),
+    ],
+
+    // In-app AI assistant (App\Services\Assistant). The API key and model live in config/services.php.
+    'assistant' => [
+        // Messages each user may send per day, to keep API costs predictable. 0 = no limit.
+        'daily_message_limit' => (int) env('ASSISTANT_DAILY_LIMIT', 50),
+        // Earlier messages sent with each question, so replies keep the thread of the chat.
+        'history_messages' => 20,
+        'max_message_length' => 4000,
     ],
 
     // Seed demo accounts and sample data even in production (never on a live site).

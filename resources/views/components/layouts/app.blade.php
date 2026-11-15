@@ -48,6 +48,7 @@
         </main>
     </div>
 </div>
+<x-assistant-widget />
 @stack('scripts')
 </body>
 </html>

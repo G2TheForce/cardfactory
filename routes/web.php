@@ -47,3 +47,4 @@ require __DIR__.'/profiles.php';
 require __DIR__.'/imports.php';
 require __DIR__.'/inventory.php';
 require __DIR__.'/landing-pages.php';
+require __DIR__.'/assistant.php';

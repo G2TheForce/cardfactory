@@ -46,6 +46,7 @@ class Navigation
             ]],
             ['label' => 'Account', 'items' => [
                 ['label' => 'My card details', 'route' => 'my-details', 'icon' => 'id-card', 'active' => 'customers.edit', 'role' => 'customer'],
+                ['label' => 'AI assistant', 'route' => 'assistant.index', 'icon' => 'sparkles', 'active' => 'assistant.*', 'can' => 'assistant.use'],
                 ['label' => 'Settings', 'route' => 'settings.profile', 'icon' => 'settings', 'active' => 'settings.*'],
             ]],
         ];

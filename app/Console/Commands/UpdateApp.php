@@ -37,10 +37,13 @@ class UpdateApp extends Command
         $installed = CardTheme::where('is_system', true)->count();
         $this->components->info("Built-in card themes installed: {$installed} of {$library}.");
         $this->components->info('Landing page designer: '.count(Templates::TEMPLATES).' templates ready under Customers > Landing pages.');
+        if (blank(config('services.anthropic.key'))) {
+            $this->components->warn('AI assistant is off: add ANTHROPIC_API_KEY to .env to turn it on.');
+        }
 
         if (! File::exists(public_path('build/manifest.json'))) {
             $this->components->warn('Front-end assets are not built yet. Run: npm install, then npm run build');
-        } elseif (File::lastModified(public_path('build/manifest.json')) < File::lastModified(resource_path('css/app.css'))) {
+        } elseif (File::lastModified(public_path('build/manifest.json')) < max(File::lastModified(resource_path('css/app.css')), File::lastModified(resource_path('js/app.js')))) {
             $this->components->warn('Front-end assets are older than the source. Run: npm install, then npm run build');
         }
 

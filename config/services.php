@@ -54,4 +54,13 @@ return [
         'graph_version' => env('META_GRAPH_VERSION', 'v21.0'),
     ],
 
+    // AI assistant (App\Services\Assistant\ClaudeAssistantClient).
+    'anthropic' => [
+        'key' => env('ANTHROPIC_API_KEY'),
+        'model' => env('ANTHROPIC_MODEL', 'claude-opus-5-5'),
+        // low, medium, high, xhigh or max: higher thinks longer and costs more.
+        'effort' => env('ANTHROPIC_EFFORT', 'low'),
+        'max_tokens' => (int) env('ANTHROPIC_MAX_TOKENS', 8000),
+    ],
+
 ];
