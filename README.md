@@ -401,6 +401,26 @@ header), how people arrived (QR, NFC, direct), referring websites and the most v
 profiles. "Daily CSV" exports the counts per day. No IP addresses, cookies or full user
 agents are stored.
 
+## AI assistant
+
+Every signed-in user gets an AI assistant: a chat button in the bottom-right corner of
+every app page, and a full page under **Account → AI assistant** with their saved chats.
+It answers how-to questions about SmartCard Studio and writes copy (bios, taglines, card
+text, landing page sections). It can't see or change data.
+
+- Set `ANTHROPIC_API_KEY` in `.env` (get a key at platform.claude.com). Without a key the
+  chat shows "not set up" and nothing else changes.
+- `ANTHROPIC_MODEL` (default `claude-opus-5-5`; `claude-sonnet-5-5` or `claude-haiku-5-5` cost
+  less), `ANTHROPIC_EFFORT` (default `low`) and `ASSISTANT_DAILY_LIMIT` (messages per user per
+  day, default 50, 0 for no limit). Questions are also limited to 10 a minute per user.
+- What it knows comes from [resources/assistant/guide.md](resources/assistant/guide.md) plus
+  the menu items the user's role can open. Update the guide when features change.
+- Replies stream as they're written. Behind nginx, `X-Accel-Buffering: no` is sent so
+  nothing buffers them; other proxies may need response buffering turned off for `/assistant/messages`.
+- Permission `assistant.use` (all roles by default). Chats are private to their owner.
+- Code: `App\Services\Assistant` (official Anthropic PHP SDK, `ClaudeAssistantClient`), tests
+  bind `Tests\Support\FakeAssistantClient` so no API calls are made.
+
 ## Security notes
 
 - Passwords hashed with bcrypt; stronger password rules in production.

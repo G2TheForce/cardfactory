@@ -19,7 +19,7 @@ class RolePermissionTest extends TestCase
 
         $this->assertTrue(Role::findByName('sales-manager')->hasPermissionTo('nfc.manage'));
         $this->assertFalse(Role::findByName('designer')->hasPermissionTo('users.manage'));
-        $this->assertCount(0, Role::findByName('customer')->permissions);
+        $this->assertSame(['assistant.use'], Role::findByName('customer')->permissions->pluck('name')->all());
     }
 
     public function test_super_admin_passes_every_gate(): void

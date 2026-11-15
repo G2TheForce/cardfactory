@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Models\User;
 use App\Services\ActivityLogger;
+use App\Services\Assistant\AssistantClient;
+use App\Services\Assistant\ClaudeAssistantClient;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -20,7 +22,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->bind(AssistantClient::class, ClaudeAssistantClient::class);
     }
 
     public function boot(): void
@@ -49,6 +51,8 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('social-refresh', fn (Request $request) => Limit::perMinute(4)->by('social:'.($request->user()?->id ?: $request->ip())));
         // Public landing page enquiry forms.
         RateLimiter::for('leads', fn (Request $request) => Limit::perMinutes(10, 5)->by('leads:'.$request->ip()));
+        // AI assistant questions (each one is a paid API call; there is also a daily cap).
+        RateLimiter::for('assistant', fn (Request $request) => Limit::perMinute(10)->by('assistant:'.($request->user()?->id ?: $request->ip())));
         RateLimiter::for('uploads', fn (Request $request) => Limit::perMinute(30)->by('uploads:'.($request->user()?->id ?: $request->ip())));
 
         Event::listen(Login::class, function (Login $event) {
