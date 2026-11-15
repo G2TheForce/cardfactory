@@ -30,6 +30,7 @@ class Navigation
             ['label' => 'Customers', 'items' => [
                 ['label' => 'Customers', 'route' => 'customers.index', 'icon' => 'contact', 'active' => 'customers.*', 'policy' => ['viewAny', Customer::class]],
                 ['label' => 'Digital profiles', 'route' => 'profiles.index', 'icon' => 'smartphone', 'active' => 'profiles.*'],
+                ['label' => 'Landing pages', 'route' => 'landing-pages.index', 'icon' => 'layout-template', 'active' => 'landing-pages.*'],
                 ['label' => 'Bulk generator', 'route' => 'imports.index', 'icon' => 'layers', 'active' => 'imports.*', 'can' => 'imports.manage'],
             ]],
             ['label' => 'NFC & sales', 'items' => [

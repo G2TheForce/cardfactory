@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Services\BrandKitService;
 use App\Services\CardDesignService;
 use App\Services\DigitalProfileService;
+use App\Services\LandingPageService;
 use App\Support\ProfileThemes;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
@@ -216,6 +217,22 @@ class DemoDataSeeder extends Seeder
             $theme = ($slug ? $themes->firstWhere('slug', $slug) : null) ?? $themes->first();
             if ($theme) {
                 $kits->createDesign($kit, $theme, $designer, $name.' · Standard');
+            }
+        }
+
+        // Landing pages: two live (with a few enquiries) and one draft.
+        $pages = app(LandingPageService::class);
+        foreach ($customers->where('status', 'active')->take(3)->values() as $i => $customer) {
+            $page = $pages->create($customer, ['template' => ['cafe', 'consultant', 'fitness'][$i]], $admin);
+            if ($i < 2) {
+                $pages->publish($page, true, $admin);
+                $page->update(['views_count' => mt_rand(40, 900)]);
+                foreach (range(1, mt_rand(1, 4)) as $n) {
+                    $page->leads()->create([
+                        'name' => fake()->name(), 'email' => fake()->safeEmail(), 'phone' => fake()->e164PhoneNumber(),
+                        'message' => fake()->sentence(14), 'read_at' => $n > 1 ? now() : null,
+                    ]);
+                }
             }
         }
     }

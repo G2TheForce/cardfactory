@@ -47,6 +47,8 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('beacons', fn (Request $request) => Limit::perMinute(60)->by('beacons:'.$request->ip()));
         // Each refresh calls up to seven third-party APIs.
         RateLimiter::for('social-refresh', fn (Request $request) => Limit::perMinute(4)->by('social:'.($request->user()?->id ?: $request->ip())));
+        // Public landing page enquiry forms.
+        RateLimiter::for('leads', fn (Request $request) => Limit::perMinutes(10, 5)->by('leads:'.$request->ip()));
         RateLimiter::for('uploads', fn (Request $request) => Limit::perMinute(30)->by('uploads:'.($request->user()?->id ?: $request->ip())));
 
         Event::listen(Login::class, function (Login $event) {

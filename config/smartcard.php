@@ -24,6 +24,7 @@ return [
         'designs.manage' => 'Create and edit any card design',
         'designs.assigned' => 'Create and edit designs assigned to you',
         'profiles.manage' => 'Manage any digital profile and profile layouts',
+        'landing-pages.manage' => 'Build, publish and export landing pages for any customer',
         'nfc.manage' => 'Assign, reassign and replace NFC cards',
         'inventory.manage' => 'Manage NFC inventory and products',
         'orders.manage' => 'Manage card orders',
@@ -38,7 +39,7 @@ return [
         'admin' => ['label' => 'Admin', 'permissions' => [
             'dashboard.view', 'users.manage', 'activity.view', 'customers.view-any', 'customers.manage',
             'themes.manage', 'themes.publish', 'designs.view-any', 'designs.manage', 'profiles.manage',
-            'nfc.manage', 'inventory.manage', 'orders.manage', 'exports.manage', 'imports.manage',
+            'landing-pages.manage', 'nfc.manage', 'inventory.manage', 'orders.manage', 'exports.manage', 'imports.manage',
             'analytics.view-any', 'revenue.view',
         ]],
         'designer' => ['label' => 'Designer', 'permissions' => [

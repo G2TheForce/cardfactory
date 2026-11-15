@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\CardTheme;
+use App\Support\LandingPages\Templates;
 use App\Support\Themes\ThemeLibrary;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\ThemeSeeder;
@@ -35,6 +36,7 @@ class UpdateApp extends Command
         $library = count(ThemeLibrary::all());
         $installed = CardTheme::where('is_system', true)->count();
         $this->components->info("Built-in card themes installed: {$installed} of {$library}.");
+        $this->components->info('Landing page designer: '.count(Templates::TEMPLATES).' templates ready under Customers > Landing pages.');
 
         if (! File::exists(public_path('build/manifest.json'))) {
             $this->components->warn('Front-end assets are not built yet. Run: npm install, then npm run build');
