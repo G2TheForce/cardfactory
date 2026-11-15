@@ -5,7 +5,9 @@ namespace App\Http\Requests\LandingPages;
 use App\Services\LandingPageService;
 use App\Support\LandingPages\Sections;
 use App\Support\LandingPages\Styles;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
 
 /**
@@ -34,6 +36,13 @@ class LandingPageRequest extends FormRequest
 
     public function rules(): array
     {
+        // The live preview fires on every keystroke, so half-typed values (a colour,
+        // an address) are normal there. The service cleans style and settings anyway;
+        // only the section list has to be readable.
+        if ($this->isPreview()) {
+            return ['sections' => ['sometimes', 'array', 'max:'.Sections::MAX_SECTIONS]];
+        }
+
         return [
             'name' => ['sometimes', 'required', 'string', 'max:120'],
             'slug' => ['sometimes', 'required', 'string', 'min:3', 'max:60', 'regex:'.LandingPageService::SLUG_PATTERN],
@@ -59,6 +68,25 @@ class LandingPageRequest extends FormRequest
             'settings.remove_logo' => ['nullable', 'boolean'],
             'is_published' => ['sometimes', 'boolean'],
         ];
+    }
+
+    /**
+     * The preview renders inside the designer's iframe. A redirect there would load
+     * the whole designer into the iframe, which starts its own preview, and so on
+     * forever. Answer with a short message page instead.
+     */
+    protected function failedValidation(Validator $validator): void
+    {
+        if ($this->isPreview()) {
+            throw new HttpResponseException(response()->view('landing-pages.preview-error', ['messages' => $validator->errors()->all()], 422));
+        }
+
+        parent::failedValidation($validator);
+    }
+
+    private function isPreview(): bool
+    {
+        return $this->routeIs('landing-pages.draft-preview');
     }
 
     public function messages(): array

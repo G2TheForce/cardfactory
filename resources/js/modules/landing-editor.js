@@ -25,6 +25,11 @@ export default (config) => ({
     previewScroll: 0,
 
     init() {
+        // Never run the designer inside its own preview frame (that would nest previews endlessly).
+        if (window.self !== window.top) {
+            window.top.location.href = window.location.href;
+            return;
+        }
         this.open = this.sections[0]?.id ?? null;
         this.$watch('sections', () => this.changed(), { deep: true });
         this.$watch('style', () => this.changed(), { deep: true });

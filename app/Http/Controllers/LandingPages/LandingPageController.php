@@ -166,7 +166,13 @@ class LandingPageController extends Controller
     {
         DB::beginTransaction();
         try {
-            $draft = $this->pages->update($landingPage, $request->safe()->only(['name', 'sections', 'style', 'settings']), $request->user(), log: false);
+            // Style and settings are cleaned by the service, so half-typed values just fall back.
+            $data = $request->safe()->only(['sections']) + array_filter([
+                'name' => is_string($request->input('name')) && trim($request->input('name')) !== '' ? mb_substr($request->input('name'), 0, 120) : null,
+                'style' => is_array($request->input('style')) ? $request->input('style') : null,
+                'settings' => is_array($request->input('settings')) ? $request->input('settings') : null,
+            ], fn ($v) => $v !== null);
+            $draft = $this->pages->update($landingPage, $data, $request->user(), log: false);
             $html = $this->render($draft, preview: true);
         } finally {
             DB::rollBack();
