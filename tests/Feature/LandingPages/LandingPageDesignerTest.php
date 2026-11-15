@@ -177,6 +177,27 @@ class LandingPageDesignerTest extends TestCase
         $this->assertSame('terracotta', $page->style['palette']);
     }
 
+    public function test_draft_preview_never_redirects_on_half_typed_values(): void
+    {
+        // A redirect inside the preview iframe loaded the whole designer there,
+        // which started its own preview: an endless reload loop.
+        $page = $this->page();
+        $this->actingAs($this->userWithRole(User::ROLE_ADMIN))
+            ->put(route('landing-pages.draft-preview', $page), [
+                'sections_json' => json_encode($page->sections),
+                'name' => '',
+                'slug' => 'Not A Slug!',
+                'style' => ['primary' => '#1e2', 'accent' => 'red', 'mode' => 'dark'],
+                'settings' => ['notify_email' => 'half@typed', 'seo_title' => str_repeat('x', 300)],
+            ])
+            ->assertOk()->assertSee('Good food, slow mornings');
+
+        $this->put(route('landing-pages.draft-preview', $page), ['sections_json' => 'not json'])
+            ->assertStatus(422)->assertSee('Preview paused')->assertHeaderMissing('Location');
+
+        $this->assertSame('terracotta', $page->refresh()->style['palette']);
+    }
+
     public function test_visitors_send_enquiries_that_are_saved_and_emailed(): void
     {
         $page = $this->page();
